@@ -1,0 +1,794 @@
+/* Merkelapp: a quiet workbench around one loud thing, the label itself. */
+
+:root {
+    --bench: #eef1f0;
+    --panel: #ffffff;
+    --ink: #1d2422;
+    --ink-soft: #56625e;
+    --line: #d3dbd8;
+    --line-strong: #b4c0bc;
+    --signal: #f2c200;
+    --signal-ink: #1d2422;
+    --signal-wash: #fff6cc;
+    --tape: #dfe5e3;
+    --label: #ffffff;
+    --error: #a3261c;
+    --error-wash: #fbe9e7;
+    --ok: #2e7d4f;
+    --focus: #1f6fd1;
+
+    --font: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+    --radius-s: 4px;
+    --radius-m: 8px;
+
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bench: #151918;
+        --panel: #1e2422;
+        --ink: #e6ecea;
+        --ink-soft: #9aa7a3;
+        --line: #333c39;
+        --line-strong: #4a5552;
+        --signal-wash: #3a3214;
+        --tape: #2a3230;
+        --error: #f08a7e;
+        --error-wash: #3a1f1c;
+        --ok: #6fcf97;
+        --focus: #7fb2f0;
+        color-scheme: dark;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bench);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.45;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+}
+
+h1,
+h2,
+p {
+    margin: 0;
+}
+
+button,
+input,
+select {
+    font: inherit;
+    color: inherit;
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.muted {
+    color: var(--ink-soft);
+}
+
+code {
+    font-size: 0.9em;
+}
+
+/* --- Buttons --------------------------------------------------------------- */
+
+button {
+    cursor: pointer;
+    border-radius: var(--radius-s);
+    border: 1px solid transparent;
+    padding: 0.4em 0.85em;
+    background: none;
+    white-space: nowrap;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+button.primary {
+    background: var(--signal);
+    color: var(--signal-ink);
+    font-weight: 600;
+    padding: 0.55em 1.2em;
+}
+
+button.primary:not(:disabled):hover {
+    background: #e0b400;
+}
+
+button.dark {
+    background: var(--ink);
+    color: var(--panel);
+    font-weight: 600;
+}
+
+button.secondary {
+    border-color: var(--line-strong);
+    background: var(--panel);
+}
+
+button.secondary:not(:disabled):hover {
+    border-color: var(--ink-soft);
+}
+
+button.quiet {
+    color: var(--ink-soft);
+    padding-inline: 0.5em;
+}
+
+button.quiet:not(:disabled):hover {
+    color: var(--ink);
+    background: var(--bench);
+}
+
+button.icon {
+    width: 2em;
+    height: 2em;
+    padding: 0;
+    font-size: 1.05em;
+    line-height: 1;
+    color: var(--ink-soft);
+}
+
+button.icon:not(:disabled):hover {
+    background: var(--bench);
+    color: var(--ink);
+}
+
+/* --- Inputs ------------------------------------------------------------------ */
+
+input[type="text"],
+input[type="search"],
+input[type="number"],
+select {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    background: var(--panel);
+    padding: 0.38em 0.55em;
+    min-width: 0;
+}
+
+input[type="number"] {
+    width: 5.5em;
+}
+
+input[type="range"] {
+    accent-color: var(--ink);
+    width: 100%;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--ink);
+    width: 1.05em;
+    height: 1.05em;
+}
+
+.field {
+    display: grid;
+    gap: 0.2em;
+    font-size: 0.87em;
+    color: var(--ink-soft);
+}
+
+.field > input,
+.field > select,
+.field .with-unit {
+    font-size: 1.15em;
+    color: var(--ink);
+}
+
+.field.grow {
+    flex: 1 1 12em;
+}
+
+.with-unit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.unit {
+    color: var(--ink-soft);
+    font-size: 0.85em;
+}
+
+.check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    cursor: pointer;
+}
+
+/* --- Top bar ---------------------------------------------------------------------- */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: 0.7rem 1.25rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.brand-mark {
+    width: 30px;
+    height: 30px;
+    fill: var(--signal);
+}
+
+.brand-mark .ink {
+    fill: var(--signal-ink);
+}
+
+.printer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.9rem;
+    font-size: 0.92em;
+}
+
+.printer-name {
+    font-weight: 600;
+}
+
+.printer-actions {
+    display: flex;
+}
+
+.status-dot {
+    width: 0.6em;
+    height: 0.6em;
+    border-radius: 50%;
+    background: var(--line-strong);
+}
+
+.status-dot.is-on {
+    background: var(--ok);
+}
+
+.printer-problem {
+    flex-basis: 100%;
+    color: var(--error);
+}
+
+/* --- Workspace -------------------------------------------------------------------- */
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    align-items: start;
+}
+
+.label-side {
+    display: grid;
+    gap: 1rem;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    padding: 1rem 1.1rem 1.1rem;
+    min-width: 0;
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.85rem;
+}
+
+.panel-head h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.head-actions {
+    display: flex;
+}
+
+/* --- Data ---------------------------------------------------------------------- */
+
+.data {
+    position: sticky;
+    top: 1rem;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 10rem);
+}
+
+.data-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.92em;
+}
+
+.file-name {
+    font-weight: 600;
+}
+
+.dropzone {
+    border: 2px dashed var(--line-strong);
+    border-radius: var(--radius-m);
+    padding: 3rem 1.5rem;
+    text-align: center;
+    display: grid;
+    gap: 0.5rem;
+    justify-items: center;
+}
+
+.drop-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.drop-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+body.is-dragging [data-dropzone] {
+    border-color: var(--signal);
+    background: var(--signal-wash);
+}
+
+.data-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.data-tools input[type="search"] {
+    flex: 1 1 10em;
+}
+
+.range {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.range input {
+    width: 11em;
+}
+
+.select-buttons {
+    display: flex;
+}
+
+.selection-count {
+    flex-basis: 100%;
+    font-size: 0.9em;
+}
+
+.table-wrap {
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    min-height: 8rem;
+    flex: 1;
+}
+
+table.rows {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9em;
+}
+
+.rows th,
+.rows td {
+    text-align: left;
+    padding: 0.38em 0.6em;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    max-width: 18em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rows thead th {
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+    font-weight: 600;
+    z-index: 1;
+    box-shadow: 0 1px 0 var(--line);
+}
+
+.rows .check {
+    width: 2.2em;
+}
+
+.rows .num {
+    color: var(--ink-soft);
+    text-align: right;
+    width: 3em;
+    font-variant-numeric: tabular-nums;
+}
+
+.rows tbody tr {
+    cursor: pointer;
+}
+
+.rows tbody tr:hover {
+    background: var(--bench);
+}
+
+.rows tr.is-selected td.num {
+    box-shadow: inset 3px 0 0 var(--signal);
+}
+
+.rows tr.is-current {
+    background: var(--signal-wash);
+}
+
+.rows tr.is-current:hover {
+    background: var(--signal-wash);
+}
+
+.rows td.empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--ink-soft);
+}
+
+/* --- Preview: the label on a strip of tape ------------------------------------------------ */
+
+.preview-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.92em;
+}
+
+.preview-nav .check {
+    margin-left: 0.75rem;
+}
+
+.row-pos {
+    font-variant-numeric: tabular-nums;
+    min-width: 7em;
+    text-align: center;
+}
+
+.tape-wrap {
+    margin-inline: -1.1rem;
+    overflow: hidden;
+}
+
+.tape {
+    background: var(--tape);
+    padding: 1.75rem 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.label {
+    position: relative;
+    width: min(100%, 34rem);
+    max-height: 22rem;
+    background: var(--label);
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.18), 0 6px 18px rgb(0 0 0 / 0.08);
+}
+
+/* Cut marks either side of the label, where the printer's cutter goes. */
+.label::before,
+.label::after {
+    content: "";
+    position: absolute;
+    top: -1.75rem;
+    bottom: -1.75rem;
+    border-left: 1px dashed var(--line-strong);
+}
+
+.label::before {
+    left: -0.85rem;
+}
+
+.label::after {
+    right: -0.85rem;
+}
+
+.label > svg,
+.label > canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+}
+
+.label > canvas {
+    image-rendering: pixelated;
+}
+
+.preview-notes {
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+    font-size: 0.9em;
+}
+
+.warning {
+    background: var(--signal-wash);
+    border-left: 3px solid var(--signal);
+    padding: 0.35em 0.6em;
+    border-radius: 0 var(--radius-s) var(--radius-s) 0;
+}
+
+/* --- Design --------------------------------------------------------------------------- */
+
+.notice {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 1rem;
+    background: var(--signal-wash);
+    border-radius: var(--radius-s);
+    padding: 0.6em 0.8em;
+    margin-bottom: 1rem;
+    font-size: 0.92em;
+}
+
+.group {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin: 0;
+    padding: 0.9rem 0 1rem;
+    display: grid;
+    gap: 0.7rem;
+}
+
+.group:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.group legend {
+    font-weight: 600;
+    padding: 0;
+    float: left;
+    margin-bottom: 0.1rem;
+}
+
+.group > legend + * {
+    clear: both;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem 1rem;
+}
+
+.hint {
+    font-size: 0.86em;
+    color: var(--ink-soft);
+    max-width: 62ch;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.chip {
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 0.18em 0.75em;
+    font-size: 0.88em;
+    background: var(--panel);
+}
+
+.chip:hover {
+    background: var(--signal-wash);
+    border-color: var(--signal);
+}
+
+.lines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem;
+}
+
+.line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.line-text {
+    flex: 1 1 14em;
+}
+
+.line .size input {
+    width: 4.2em;
+}
+
+.toggle {
+    border: 1px solid var(--line-strong);
+    width: 2.2em;
+    padding: 0.38em 0;
+}
+
+.toggle[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--panel);
+    border-color: var(--ink);
+}
+
+.toggle.wide {
+    width: auto;
+    padding-inline: 0.6em;
+}
+
+.add-line {
+    justify-self: start;
+}
+
+.line-moves {
+    display: flex;
+}
+
+/* --- Print bar ---------------------------------------------------------------------------- */
+
+.printbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem 1.25rem;
+    padding: 0.8rem 1.25rem;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+}
+
+.printbar .summary {
+    margin-right: auto;
+    align-self: center;
+    font-size: 1.05em;
+}
+
+.printbar .check {
+    align-self: center;
+}
+
+.print-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.progress {
+    flex: 1 1 20rem;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.progress progress {
+    width: 100%;
+    height: 0.6rem;
+    accent-color: var(--signal);
+}
+
+.print-error {
+    color: var(--error);
+}
+
+.done {
+    color: var(--ok);
+    font-size: 0.9em;
+}
+
+/* --- Dialog ------------------------------------------------------------------------------- */
+
+.dialog {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: var(--panel);
+    color: var(--ink);
+    padding: 1.25rem 1.4rem;
+    max-width: min(34rem, calc(100vw - 2rem));
+}
+
+.dialog::backdrop {
+    background: rgb(20 25 24 / 0.45);
+}
+
+.dialog h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.6rem;
+}
+
+.dialog-body {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.problems {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.3rem;
+    max-height: 40vh;
+    overflow: auto;
+}
+
+.dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+}
+
+/* --- Small screens ------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+    .workspace {
+        grid-template-columns: 1fr;
+        padding: 0.75rem;
+    }
+
+    .data {
+        position: static;
+        max-height: 70vh;
+    }
+
+    .printbar .summary {
+        flex-basis: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        scroll-behavior: auto !important;
+    }
+}

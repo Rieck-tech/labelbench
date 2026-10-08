@@ -1,0 +1,20 @@
+{
+  "name": "merkelapp",
+  "version": "0.1.0",
+  "description": "Batch-print labels from CSV/Excel to a Brady M511 from a local web app",
+  "scripts": {
+    "test": "vitest run",
+    "start": "node server.mjs",
+    "test:watch": "vitest"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@bradycorporation/brady-web-sdk": "^3.3.2",
+    "bwip-js": "^4.11.4",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  },
+  "type": "module"
+}
