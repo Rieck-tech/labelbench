@@ -43,7 +43,7 @@ Chrome opens at <http://localhost:5511>. Keep the Terminal window open while you
 
 1. Turn on the printer and click **Connect printer**. Pick the M511 in Chrome's Bluetooth list.
 2. Drop your file onto the **Data** panel (or click **Choose file…**). The first row must hold the column names.
-3. Click **Use size from printer** to match the loaded cartridge, or type the size.
+3. Click **Use cartridge size** to match the loaded cartridge, or type the size. Labelbench uses the cartridge's *printable area*, which for self-laminating labels is only the white part at the top. If the design and the cartridge don't match, it says so, because the printer would scale every label to fit.
 4. Build the label. Click a column name to insert it into the text field you last typed in.
 5. Click **Print this label** for one test label. If it comes out sideways or upside down, change **Turn when printing**. If thin text is faint, increase **Darkness**.
 6. Select the rows and click **Print _n_ labels**.
@@ -95,6 +95,7 @@ src/lib/             plain logic, covered by tests
   cells.js, xlsx.js  Excel cell values to text
   template.js        {{column}} placeholders
   layout.js          label layout, as SVG in millimetres
+  printer-size.js    label size from what the printer reports
   selection.js       row ranges, copies, batches
 tests/               Vitest tests
 ```
