@@ -9,11 +9,13 @@ import { sheetToTable } from './lib/cells.js';
 import { readXlsx } from './lib/xlsx.js';
 import { renderLabel, defaultTemplate, CODE_TYPES } from './lib/layout.js';
 import { buildPrintQueue, parseRowRange } from './lib/selection.js';
-import { placeholdersIn } from './lib/template.js';
+import { columnsIn, normalizeParts } from './lib/parts.js';
+import { partsEditorHtml, setUpPartsEditors, insertIntoLastEditor } from './part-editor.js';
 import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
-const SETTINGS_KEY = 'labelbench:settings';
+const SETTINGS_KEY = 'labelbench:settings-v2';
+const DESIGN_FORMAT = 'labelbench-design';
 const MM_PER_PT = 0.3528;
 
 const CUT_OPTIONS = [
@@ -48,7 +50,6 @@ const state = {
     printerApi: null,
     bluetooth: 'checking', // 'checking' | 'ok' | 'unsupported' | 'failed'
     job: null,
-    lastField: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -87,13 +88,20 @@ function saveSettings() {
 /** Fill in anything missing from a saved or opened design, so old files keep working. */
 function normalizeTemplate(raw) {
     const base = defaultTemplate();
+    const { format, version, ...rest } = raw;
+    const code = { ...base.code, ...(raw.code ?? {}) };
     return {
         ...base,
-        ...raw,
-        code: { ...base.code, ...(raw.code ?? {}) },
-        lines: Array.isArray(raw.lines) ? raw.lines.map((line) => ({ ...base.lines[1], ...line })) : base.lines,
+        ...rest,
+        code: { ...code, parts: normalizeParts(code.parts) },
+        lines: Array.isArray(raw.lines)
+            ? raw.lines.map((line) => ({ ...base.lines[1], ...line, parts: normalizeParts(line.parts) }))
+            : base.lines,
     };
 }
+
+/** Every column the design uses, in the code and in the text lines. */
+const usedColumns = () => columnsIn([...state.template.code.parts, ...state.template.lines.flatMap((line) => line.parts)]);
 
 // --- Data ------------------------------------------------------------------------
 
@@ -146,16 +154,16 @@ function setData(fileName, { headers, rows }) {
     if (state.options.copiesColumn && !headers.includes(state.options.copiesColumn)) state.options.copiesColumn = '';
 
     // If the current design uses none of this file's columns, start from its first columns.
-    const used = [state.template.code.text, ...state.template.lines.map((l) => l.text)].flatMap(placeholdersIn);
-    if (!used.some((name) => headers.includes(name))) {
+    if (!usedColumns().some((name) => headers.includes(name))) {
         state.template.lines = headers.slice(0, 2).map((name, i) => ({
-            text: `{{${name}}}`,
+            parts: [{ column: name }],
             sizeMm: i === 0 ? 7 : 4.5,
             bold: i === 0,
             align: 'left',
             wrap: true,
+            upper: false,
         }));
-        state.template.code = { ...state.template.code, type: 'none', text: `{{${headers[0]}}}` };
+        state.template.code = { ...state.template.code, type: 'none', parts: [{ column: headers[0] }] };
         state.notice = 'The design didn’t use any of this file’s columns, so it now shows the first two. Change it below.';
     } else {
         state.notice = null;
@@ -168,8 +176,7 @@ function setData(fileName, { headers, rows }) {
 /** The row shown in the preview: real data, or each column's name when no file is loaded. */
 function previewRow() {
     if (state.rows.length) return state.rows[state.previewIndex] ?? state.rows[0];
-    const names = [state.template.code.text, ...state.template.lines.map((l) => l.text)].flatMap(placeholdersIn);
-    return Object.fromEntries(names.map((name) => [name, name]));
+    return Object.fromEntries(usedColumns().map((name) => [name, name]));
 }
 
 /** The loaded cartridge's size, and whether the design differs from it. */
@@ -323,6 +330,7 @@ function renderDesign() {
     const t = state.template;
     const o = state.options;
     const codeType = CODE_TYPES[t.code.type] ?? CODE_TYPES.none;
+    const knownColumns = state.headers.length ? state.headers : null;
     const { size: printerSize, mismatch } = cartridgeSize();
     const sourceName = { 'printable area': 'Printable area', label: 'Label size', 'tape width': 'Tape width' };
     const cartridgeLine = printerSize
@@ -336,22 +344,25 @@ function renderDesign() {
 
         <fieldset class="group">
             <legend>Text</legend>
+            <p class="hint">Type text as usual. To add a value from your file, press <kbd>{</kbd> or click <strong>Insert column</strong>${
+                state.headers.length ? ', or click a column below' : ''
+            }.</p>
             ${
                 state.headers.length
-                    ? `<div class="chips" role="group" aria-label="Columns">
+                    ? `<div class="chips" role="group" aria-label="Insert a column">
                         ${state.headers.map((h) => `<button type="button" class="chip" data-insert="${escapeHtml(h)}">${escapeHtml(h)}</button>`).join('')}
-                       </div>
-                       <p class="hint">Click a column to put it into the field you last typed in. Text in {{double braces}} is replaced by that column’s value; add |upper for capitals.</p>`
-                    : '<p class="hint">Write {{column name}} to use a value from your file. Load a file to pick columns with a click.</p>'
+                       </div>`
+                    : ''
             }
             <ol class="lines">
                 ${t.lines
                     .map(
                         (line, i) => `
                     <li class="line" data-line="${i}">
-                        <input type="text" class="line-text" data-line-field="text" data-template-field value="${escapeHtml(line.text)}" aria-label="Line ${i + 1} text">
+                        ${partsEditorHtml({ id: `line-${i}`, parts: line.parts, label: `Line ${i + 1} text`, placeholder: 'Type text or press { for a column', columns: knownColumns })}
                         <span class="with-unit size"><input type="number" data-line-field="sizePt" value="${round(line.sizeMm / MM_PER_PT)}" step="1" min="4" max="200" aria-label="Line ${i + 1} text size"><span class="unit">pt</span></span>
                         <button type="button" class="toggle" data-line-action="bold" aria-pressed="${line.bold}" aria-label="Bold" title="Bold"><b>B</b></button>
+                        <button type="button" class="toggle wide" data-line-action="upper" aria-pressed="${Boolean(line.upper)}" title="Print this line in capitals">ABC</button>
                         <button type="button" class="toggle wide" data-line-action="wrap" aria-pressed="${Boolean(line.wrap)}" title="Let long text continue on a second line">Wrap</button>
                         <select data-line-field="align" aria-label="Line ${i + 1} alignment">
                             ${['left', 'center', 'right'].map((a) => `<option value="${a}" ${line.align === a ? 'selected' : ''}>${a[0].toUpperCase() + a.slice(1)}</option>`).join('')}
@@ -378,7 +389,7 @@ function renderDesign() {
                 </label>
                 ${
                     t.code.type !== 'none'
-                        ? `<label class="field grow"><span>Contents</span><input type="text" data-field="code.text" data-template-field value="${escapeHtml(t.code.text)}"></label>
+                        ? `<div class="field grow"><span>Contents</span>${partsEditorHtml({ id: 'code', parts: t.code.parts, label: 'Code contents', placeholder: 'Press { for a column', columns: knownColumns })}</div>
                            ${
                                codeType.square
                                    ? `<label class="field"><span>Position</span><select data-field="code.position">
@@ -715,9 +726,9 @@ const actions = {
     'prev-row': () => showRow(state.previewIndex - 1),
     'next-row': () => showRow(state.previewIndex + 1),
     'add-line': () => {
-        state.template.lines.push({ text: '', sizeMm: 4.5, bold: false, align: 'left', wrap: true });
+        state.template.lines.push({ parts: [], sizeMm: 4.5, bold: false, align: 'left', wrap: true, upper: false });
         changed({ design: true });
-        $('.line:last-child .line-text')?.focus();
+        $('.line:last-child [data-parts-editor]')?.focus();
     },
     'dismiss-notice': () => {
         state.notice = null;
@@ -725,7 +736,8 @@ const actions = {
     },
     'size-from-printer': useSizeFromPrinter,
     'export-template': () => {
-        const blob = new Blob([JSON.stringify(state.template, null, 2)], { type: 'application/json' });
+        const design = { format: DESIGN_FORMAT, version: 1, ...state.template };
+        const blob = new Blob([JSON.stringify(design, null, 2)], { type: 'application/json' });
         const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'label-design.json' });
         link.click();
         URL.revokeObjectURL(link.href);
@@ -773,18 +785,10 @@ document.addEventListener('click', (event) => {
         return;
     }
 
-    // Column chips: insert {{column}} into the last text field used.
+    // Column chips: insert the column into the line last typed in.
     const chip = event.target.closest('[data-insert]');
     if (chip) {
-        const field = state.lastField && document.contains(state.lastField) ? state.lastField : $('.line:last-child .line-text');
-        if (!field) return;
-        const insert = `{{${chip.dataset.insert}}}`;
-        const start = field.selectionStart ?? field.value.length;
-        const end = field.selectionEnd ?? field.value.length;
-        const needsSpace = start > 0 && !/\s$/.test(field.value.slice(0, start));
-        field.setRangeText((needsSpace ? ' ' : '') + insert, start, end, 'end');
-        field.dispatchEvent(new Event('input', { bubbles: true }));
-        field.focus();
+        insertIntoLastEditor(chip.dataset.insert, $('.line:last-child [data-parts-editor]'));
         return;
     }
 
@@ -796,6 +800,7 @@ document.addEventListener('click', (event) => {
         const action = lineButton.dataset.lineAction;
         if (action === 'bold') lines[i].bold = !lines[i].bold;
         if (action === 'wrap') lines[i].wrap = !lines[i].wrap;
+        if (action === 'upper') lines[i].upper = !lines[i].upper;
         if (action === 'remove') lines.splice(i, 1);
         if (action === 'up' && i > 0) [lines[i - 1], lines[i]] = [lines[i], lines[i - 1]];
         if (action === 'down' && i < lines.length - 1) [lines[i + 1], lines[i]] = [lines[i], lines[i + 1]];
@@ -808,8 +813,14 @@ document.addEventListener('click', (event) => {
     if (tr && !event.target.closest('input')) showRow(Number(tr.dataset.row));
 });
 
-document.addEventListener('focusin', (event) => {
-    if (event.target.matches('[data-template-field]')) state.lastField = event.target;
+// The pill editors report every change here; ids are "code" or "line-<n>".
+setUpPartsEditors({
+    getColumns: () => state.headers,
+    onChange: (id, parts) => {
+        if (id === 'code') state.template.code.parts = parts;
+        else state.template.lines[Number(id.replace('line-', ''))].parts = parts;
+        changed();
+    },
 });
 
 document.addEventListener('input', (event) => {
@@ -908,7 +919,7 @@ document.addEventListener('change', (event) => {
             .text()
             .then((text) => {
                 const raw = JSON.parse(text);
-                if (!Array.isArray(raw.lines) || !(raw.widthMm > 0)) throw new Error('This file is not a Labelbench label design.');
+                if (raw.format !== DESIGN_FORMAT || !Array.isArray(raw.lines)) throw new Error('This file is not a Labelbench label design.');
                 state.template = normalizeTemplate(raw);
                 state.notice = null;
                 changed({ design: true });
@@ -947,7 +958,7 @@ document.addEventListener('drop', (event) => {
 
 // Arrow keys step through rows when not typing.
 document.addEventListener('keydown', (event) => {
-    if (event.target.closest('input, select, textarea, dialog') || !state.rows.length) return;
+    if (event.target.closest('input, select, textarea, dialog, [contenteditable]') || !state.rows.length) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowRight') showRow(state.previewIndex + 1);
     else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') showRow(state.previewIndex - 1);
     else return;
