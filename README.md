@@ -1,8 +1,8 @@
-# Merkelapp
+# Labelbench
 
 Print batches of labels on a **Brady M511** from a CSV or Excel file, on a Mac (or any computer with Chrome or Edge). It runs as a small web app on your own computer and works without internet once it's installed.
 
-![Merkelapp with a QR label in the preview](docs/screenshot.png)
+![Labelbench with a QR label in the preview](docs/screenshot.png)
 
 - Open a CSV, TSV or Excel (.xlsx) file, then pick which rows to print by ticking them, searching, or typing a range like `1-20, 25`.
 - Design the label: lines of text from your columns, sizes, bold, alignment, and an optional QR code, Data Matrix or barcode.
@@ -29,7 +29,7 @@ Print batches of labels on a **Brady M511** from a CSV or Excel file, on a Mac (
 
 ## Start
 
-On a Mac, double-click **`Start Merkelapp.command`**. The first time, macOS may say it's from an unidentified developer: right-click it, choose **Open**, then **Open** again.
+On a Mac, double-click **`Start Labelbench.command`**. The first time, macOS may say it's from an unidentified developer: right-click it, choose **Open**, then **Open** again.
 
 Or, in Terminal:
 
@@ -70,9 +70,9 @@ Long text is shrunk to fit. With **Wrap** on, a line can continue onto a second 
 
 ## About Brady's library
 
-Talking to the printer uses Brady's official [Web SDK](https://sdk.bradyid.com/). It is **not** part of this project and is not open source: `npm install` downloads it from npm, under [Brady's licence](https://www.npmjs.com/package/@bradycorporation/brady-web-sdk). Merkelapp turns off the SDK's analytics, so nothing is sent anywhere.
+Talking to the printer uses Brady's official [Web SDK](https://sdk.bradyid.com/). It is **not** part of this project and is not open source: `npm install` downloads it from npm, under [Brady's licence](https://www.npmjs.com/package/@bradycorporation/brady-web-sdk). Labelbench turns off the SDK's analytics, so nothing is sent anywhere.
 
-The SDK prints images, so Merkelapp draws each label itself (as SVG, then as a 300 dpi black-and-white bitmap) and sends those.
+The SDK prints images, so Labelbench draws each label itself (as SVG, then as a 300 dpi black-and-white bitmap) and sends those.
 
 ## For developers
 
@@ -107,4 +107,4 @@ tests/               Vitest tests
 
 ## Licence
 
-Merkelapp's own code is MIT licensed (see `LICENSE`). Brady's SDK, bwip-js and ExcelJS have their own licences.
+Labelbench's own code is MIT licensed (see `LICENSE`). Brady's SDK, bwip-js and ExcelJS have their own licences.

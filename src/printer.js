@@ -6,7 +6,7 @@
 
 import BradySdk from 'brady-web-sdk';
 
-const OWNERSHIP_KEY = 'merkelapp:printer-id';
+const OWNERSHIP_KEY = 'labelbench:printer-id';
 
 function loadId() {
     try {

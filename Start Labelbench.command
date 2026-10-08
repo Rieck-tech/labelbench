@@ -1,5 +1,5 @@
 #!/bin/bash
-# Double-click this file on a Mac to start Merkelapp.
+# Double-click this file on a Mac to start Labelbench.
 cd "$(dirname "$0")" || exit 1
 
 if ! command -v npm >/dev/null 2>&1; then
@@ -9,7 +9,7 @@ if ! command -v npm >/dev/null 2>&1; then
 fi
 
 if [ ! -d node_modules/@bradycorporation ]; then
-    echo "First start: installing what Merkelapp needs (this needs internet once)…"
+    echo "First start: installing what Labelbench needs (this needs internet once)…"
     npm install || { read -r -p "Install failed. Press Enter to close."; exit 1; }
 fi
 

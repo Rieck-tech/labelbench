@@ -1,4 +1,4 @@
-// A tiny local web server for Merkelapp. No dependencies, no internet needed.
+// A tiny local web server for Labelbench. No dependencies, no internet needed.
 // It only listens on this computer (127.0.0.1), and only serves the app's own files.
 //
 //   npm start               starts the server and opens Chrome
@@ -69,7 +69,7 @@ function send(response, status, text) {
 server.listen(PORT, HOST, () => {
     // Web Bluetooth only works on secure pages; "localhost" counts as secure, so use that name.
     const address = `http://localhost:${PORT}/`;
-    console.log(`Merkelapp is running at ${address}`);
+    console.log(`Labelbench is running at ${address}`);
     console.log('Keep this window open while printing. Press Ctrl+C to stop.');
 
     if (!process.argv.includes('--no-open') && process.platform === 'darwin') {
@@ -82,7 +82,7 @@ server.listen(PORT, HOST, () => {
 
 server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use. Is Merkelapp already running? Try http://localhost:${PORT}/`);
+        console.error(`Port ${PORT} is already in use. Is Labelbench already running? Try http://localhost:${PORT}/`);
     } else {
         console.error(error.message);
     }

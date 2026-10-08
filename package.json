@@ -1,5 +1,5 @@
 {
-  "name": "merkelapp",
+  "name": "labelbench",
   "version": "0.1.0",
   "description": "Batch-print labels from CSV/Excel to a Brady M511 from a local web app",
   "scripts": {

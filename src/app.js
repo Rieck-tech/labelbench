@@ -1,4 +1,4 @@
-// Merkelapp: load a CSV or Excel file, design a label, print a batch on a Brady M511.
+// Labelbench: load a CSV or Excel file, design a label, print a batch on a Brady M511.
 //
 // The app keeps everything in one `state` object. When something changes, the
 // matching render function redraws that part of the page from `state`.
@@ -12,7 +12,7 @@ import { buildPrintQueue, parseRowRange } from './lib/selection.js';
 import { placeholdersIn } from './lib/template.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
-const SETTINGS_KEY = 'merkelapp:settings';
+const SETTINGS_KEY = 'labelbench:settings';
 const MM_PER_PT = 0.3528;
 const MM_PER_INCH = 25.4;
 
@@ -411,7 +411,7 @@ function renderPrinter() {
         return;
     }
     if (state.bluetooth === 'failed') {
-        el.innerHTML = '<p class="printer-problem">Brady’s printer library didn’t load. Run <code>npm install</code> and restart Merkelapp.</p>';
+        el.innerHTML = '<p class="printer-problem">Brady’s printer library didn’t load. Run <code>npm install</code> and restart Labelbench.</p>';
         return;
     }
     if (!p.connected) {
@@ -897,7 +897,7 @@ document.addEventListener('change', (event) => {
             .text()
             .then((text) => {
                 const raw = JSON.parse(text);
-                if (!Array.isArray(raw.lines) || !(raw.widthMm > 0)) throw new Error('This file is not a Merkelapp label design.');
+                if (!Array.isArray(raw.lines) || !(raw.widthMm > 0)) throw new Error('This file is not a Labelbench label design.');
                 state.template = normalizeTemplate(raw);
                 state.notice = null;
                 changed({ design: true });
