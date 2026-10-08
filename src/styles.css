@@ -610,6 +610,20 @@ table.rows {
     max-width: 62ch;
 }
 
+.hint.is-off {
+    color: var(--ink);
+    background: var(--signal-wash);
+    border-left: 3px solid var(--signal);
+    padding: 0.35em 0.6em;
+}
+
+button.quiet.inline {
+    padding: 0 0.25em;
+    text-decoration: underline;
+    color: var(--ink);
+    font-weight: 600;
+}
+
 .chips {
     display: flex;
     flex-wrap: wrap;

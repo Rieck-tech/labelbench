@@ -10,11 +10,11 @@ import { readXlsx } from './lib/xlsx.js';
 import { renderLabel, defaultTemplate, CODE_TYPES } from './lib/layout.js';
 import { buildPrintQueue, parseRowRange } from './lib/selection.js';
 import { placeholdersIn } from './lib/template.js';
+import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
 const SETTINGS_KEY = 'labelbench:settings';
 const MM_PER_PT = 0.3528;
-const MM_PER_INCH = 25.4;
 
 const CUT_OPTIONS = [
     { value: 1, label: 'Cut after every label' },
@@ -172,6 +172,14 @@ function previewRow() {
     return Object.fromEntries(names.map((name) => [name, name]));
 }
 
+/** The loaded cartridge's size, and whether the design differs from it. */
+function cartridgeSize() {
+    const size = state.printer.connected ? labelSizeFromPrinter(state.printer) : null;
+    return { size, mismatch: Boolean(size) && !sameSize(state.template, size) };
+}
+
+const formatSize = (size) => (size.widthMm ? `${round(size.widthMm)} × ${round(size.heightMm)} mm` : `${round(size.heightMm)} mm wide`);
+
 // --- Render: data panel ------------------------------------------------------------
 
 function renderFileInfo() {
@@ -293,7 +301,15 @@ async function renderPreview() {
     const size = `${round(template.widthMm)} × ${round(template.heightMm)} mm`;
     $('#preview-notes').innerHTML = `
         <p class="muted">${size}${state.options.rotation ? `, turned ${state.options.rotation}° when printed` : ''}</p>
+        ${mismatchNote()}
         ${warnings.map((w) => `<p class="warning">${escapeHtml(w)}</p>`).join('')}`;
+}
+
+function mismatchNote() {
+    const { size, mismatch } = cartridgeSize();
+    if (!mismatch) return '';
+    return `<p class="warning">The loaded cartridge prints ${formatSize(size)}, so these labels will be scaled to fit.
+        <button type="button" class="quiet inline" data-action="size-from-printer">Use ${formatSize(size)}</button></p>`;
 }
 
 // --- Render: design panel ------------------------------------------------------------
@@ -307,7 +323,13 @@ function renderDesign() {
     const t = state.template;
     const o = state.options;
     const codeType = CODE_TYPES[t.code.type] ?? CODE_TYPES.none;
-    const canUsePrinterSize = state.printer.connected && (state.printer.zoneDimensions || state.printer.supplyDimensions);
+    const { size: printerSize, mismatch } = cartridgeSize();
+    const sourceName = { 'printable area': 'Printable area', label: 'Label size', 'tape width': 'Tape width' };
+    const cartridgeLine = printerSize
+        ? `<p class="hint${mismatch ? ' is-off' : ''}">${escapeHtml(state.printer.supplyName || 'Loaded cartridge')}: ${sourceName[printerSize.source].toLowerCase()} ${formatSize(printerSize)}.${mismatch ? ' The design is a different size, so labels will be scaled.' : ' The design matches.'}</p>`
+        : state.printer.connected
+          ? '<p class="hint">The printer didn’t report the size of the loaded cartridge.</p>'
+          : '<p class="hint">Connect the printer to read the size of the loaded cartridge.</p>';
 
     $('#design').innerHTML = `
         ${state.notice ? `<div class="notice"><p>${escapeHtml(state.notice)}</p><button type="button" class="quiet" data-action="dismiss-notice">Dismiss</button></div>` : ''}
@@ -378,10 +400,10 @@ function renderDesign() {
                 ${numberInput('marginMm', t.marginMm, { step: 0.5, max: 20, label: 'Margin' })}
             </div>
             <div class="row">
-                <button type="button" class="secondary" data-action="size-from-printer" ${canUsePrinterSize ? '' : 'disabled'}>Use size from printer</button>
+                <button type="button" class="${mismatch ? 'primary' : 'secondary'}" data-action="size-from-printer" ${printerSize && mismatch ? '' : 'disabled'}>Use cartridge size</button>
                 <label class="check"><input type="checkbox" data-field="frame" ${t.frame ? 'checked' : ''}> Draw a frame</label>
             </div>
-            ${canUsePrinterSize ? '' : '<p class="hint">Connect the printer to read the size of the loaded cartridge.</p>'}
+            ${cartridgeLine}
         </fieldset>
 
         <fieldset class="group">
@@ -530,11 +552,13 @@ async function setUpPrinter() {
     try {
         const { createPrinter } = await import('./printer.js');
         state.printerApi = createPrinter((snapshot) => {
-            const wasConnected = state.printer.connected;
+            const before = JSON.stringify([state.printer.connected, labelSizeFromPrinter(state.printer), state.printer.supplyName]);
             state.printer = snapshot;
             renderPrinter();
-            if (wasConnected !== snapshot.connected) {
+            // Redraw the design when the printer connects, disconnects or gets another cartridge.
+            if (before !== JSON.stringify([snapshot.connected, labelSizeFromPrinter(snapshot), snapshot.supplyName])) {
                 renderDesign();
+                renderPreview();
                 renderPrintBar();
             }
         });
@@ -558,29 +582,12 @@ async function connectPrinter() {
     return state.printer.connected;
 }
 
-/** Read a size the SDK reports (in inches) in whichever shape it comes. */
-function parseInches(value) {
-    if (!value) return [];
-    if (Array.isArray(value)) return value.map(Number);
-    if (typeof value === 'object') return [Number(value.width ?? value.Width), Number(value.height ?? value.Height)];
-    return (String(value).match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
-}
-
 function useSizeFromPrinter() {
-    const p = state.printer;
-    const sizes = parseInches(p.zoneDimensions).filter((n) => n > 0);
-    const fallback = parseInches(p.supplyDimensions).filter((n) => n > 0);
-    const inches = sizes.length ? sizes : fallback;
-    if (!inches.length) return;
-
-    const mm = inches.map((n) => round(n * MM_PER_INCH, 1)).sort((a, b) => b - a);
-    if (mm.length >= 2) {
-        state.template.widthMm = mm[0];
-        state.template.heightMm = mm[1];
-    } else {
-        // Continuous tape only reports its width; the length stays as designed.
-        state.template.heightMm = mm[0];
-    }
+    const size = labelSizeFromPrinter(state.printer);
+    if (!size) return;
+    // Continuous tape only reports its width; the length stays as designed.
+    if (size.widthMm) state.template.widthMm = size.widthMm;
+    state.template.heightMm = size.heightMm;
     saveSettings();
     renderDesign();
     renderPreview();
@@ -611,14 +618,18 @@ async function startPrint(queue) {
         const { warnings } = renderLabel(state.template, state.rows[rowIndex] ?? previewRow(), renderDeps);
         if (warnings.length) problems.push({ rowIndex, warnings });
     }
+    const { size: printerSize, mismatch } = cartridgeSize();
+    if (mismatch) {
+        problems.unshift({ text: `The loaded cartridge prints ${formatSize(printerSize)}, but the design is ${formatSize(state.template)}. Every label will be scaled to fit.` });
+    }
     if (problems.length) {
         const list = problems
             .slice(0, 8)
-            .map((p) => `<li><strong>Row ${p.rowIndex + 1}:</strong> ${p.warnings.map(escapeHtml).join(' ')}</li>`)
+            .map((p) => (p.text ? `<li>${escapeHtml(p.text)}</li>` : `<li><strong>Row ${p.rowIndex + 1}:</strong> ${p.warnings.map(escapeHtml).join(' ')}</li>`))
             .join('');
         const more = problems.length > 8 ? `<p class="muted">…and ${problems.length - 8} more.</p>` : '';
         const go = await showDialog({
-            title: `${plural(problems.length, 'label needs', 'labels need')} a look`,
+            title: problems.some((p) => p.text) ? 'Check before printing' : `${plural(problems.length, 'label needs', 'labels need')} a look`,
             body: `<ul class="problems">${list}</ul>${more}`,
             cancel: 'Go back',
             confirm: 'Print anyway',
