@@ -1,4 +1,4 @@
-import { fillTemplate } from './template.js';
+import { fillParts } from './parts.js';
 
 /**
  * Label layout. Everything here is measured in millimetres, and the result is an SVG
@@ -24,10 +24,10 @@ export function defaultTemplate() {
         lineHeight: 1.15,
         minSizeMm: 2,
         frame: false,
-        code: { type: 'qrcode', text: '{{code}}', position: 'left', heightPct: 35 },
+        code: { type: 'qrcode', parts: [{ column: 'code' }], position: 'left', heightPct: 35 },
         lines: [
-            { text: '{{title}}', sizeMm: 7, bold: true, align: 'left', wrap: true },
-            { text: '{{subtitle}}', sizeMm: 4.5, bold: false, align: 'left', wrap: true },
+            { parts: [{ column: 'title' }], sizeMm: 7, bold: true, align: 'left', wrap: true, upper: false },
+            { parts: [{ column: 'subtitle' }], sizeMm: 4.5, bold: false, align: 'left', wrap: true, upper: false },
         ],
     };
 }
@@ -138,7 +138,7 @@ export function renderLabel(template, row, { measureText, barcode }) {
     const parts = [`<rect width="${fmt(w)}" height="${fmt(h)}" fill="#fff"/>`];
 
     // The code, if there is one.
-    const codeText = template.code?.type && template.code.type !== 'none' ? fillTemplate(template.code.text, row).trim() : '';
+    const codeText = template.code?.type && template.code.type !== 'none' ? fillParts(template.code.parts, row).trim() : '';
     const { code, textArea } = placeCode(template, codeText);
 
     if (code) {
@@ -155,7 +155,10 @@ export function renderLabel(template, row, { measureText, barcode }) {
 
     // The text lines: fill in, drop empty ones, wrap long ones, then fit the height and each line's width.
     const lines = (template.lines ?? [])
-        .map((line) => ({ ...line, text: fillTemplate(line.text, row).replace(/\s+/g, ' ').trim() }))
+        .map((line) => {
+            const text = fillParts(line.parts, row).replace(/\s+/g, ' ').trim();
+            return { ...line, text: line.upper ? text.toLocaleUpperCase() : text };
+        })
         .filter((line) => line.text !== '');
 
     const wrapAt = (scale) =>

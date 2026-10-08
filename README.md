@@ -44,7 +44,7 @@ Chrome opens at <http://localhost:5511>. Keep the Terminal window open while you
 1. Turn on the printer and click **Connect printer**. Pick the M511 in Chrome's Bluetooth list.
 2. Drop your file onto the **Data** panel (or click **Choose file…**). The first row must hold the column names.
 3. Click **Use cartridge size** to match the loaded cartridge, or type the size. Labelbench uses the cartridge's *printable area*, which for self-laminating labels is only the white part at the top. If the design and the cartridge don't match, it says so, because the printer would scale every label to fit.
-4. Build the label. Click a column name to insert it into the text field you last typed in.
+4. Build the label: type text, and press <kbd>{</kbd> to add a value from a column.
 5. Click **Print this label** for one test label. If it comes out sideways or upside down, change **Turn when printing**. If thin text is faint, increase **Darkness**.
 6. Select the rows and click **Print _n_ labels**.
 
@@ -52,13 +52,15 @@ Use **Save design…** to keep a label design as a file, and **Open design…** 
 
 ## Writing label text
 
-Text in double braces is replaced by the value from that column:
+Each text line is typed like ordinary text. Values from your file appear in it as small pills:
 
-| You write | Row has | Label shows |
-| --- | --- | --- |
-| `{{Navn}}` | Navn = Skruer | Skruer |
-| `Hylle {{Hylle}} – {{Rom}}` | Hylle = B, Rom = Bod | Hylle B – Bod |
-| `{{Navn\|upper}}` | Navn = Skruer | SKRUER |
+- Press <kbd>{</kbd> or click **Insert column**, start typing the column's name, and press Enter (or click it).
+- Or click a column name above the lines to insert it where you were last typing.
+- Backspace removes a pill in one go.
+
+For example, the line **Shelf** `Shelf` **–** `Room`, with the pills filled from a row where Shelf = B and Room = Store, prints *Shelf B – Store*.
+
+Each line has its own size, **B** (bold), **ABC** (capitals), **Wrap** and alignment.
 
 Long text is shrunk to fit. With **Wrap** on, a line can continue onto a second line. If it still doesn't fit, it's cut with "…", and you're warned before printing.
 
@@ -88,12 +90,13 @@ index.html           the page and import map
 server.mjs           local web server
 src/app.js           user interface and printing flow
 src/printer.js       wrapper around Brady's SDK
+src/part-editor.js   the text editor with column pills
 src/render.js        text measuring, barcodes, SVG to printer bitmap
 src/lib/             plain logic, covered by tests
   csv.js             CSV parsing and separator detection
   decode.js          UTF-8 / Windows-1252 decoding
   cells.js, xlsx.js  Excel cell values to text
-  template.js        {{column}} placeholders
+  parts.js           label text as fixed text and column parts
   layout.js          label layout, as SVG in millimetres
   printer-size.js    label size from what the printer reports
   selection.js       row ranges, copies, batches
