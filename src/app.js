@@ -12,6 +12,7 @@ import { buildPrintQueue, parseRowRange } from './lib/selection.js';
 import { columnsIn, normalizeParts } from './lib/parts.js';
 import { partsEditorHtml, setUpPartsEditors, insertIntoLastEditor } from './part-editor.js';
 import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
+import { printerMessageText } from './lib/printer-message.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
 const SETTINGS_KEY = 'labelbench:settings-v2';
@@ -478,7 +479,7 @@ function renderPrinter() {
             <button type="button" class="quiet" data-action="cut">Cut</button>
             <button type="button" class="quiet" data-action="disconnect">Disconnect</button>
         </span>
-        ${p.messageTitle || p.message ? `<p class="printer-problem">${escapeHtml([p.messageTitle, p.message, p.messageRemedy].filter(Boolean).join('. '))}</p>` : ''}`;
+        ${printerMessageText(p) ? `<p class="printer-problem">${escapeHtml(printerMessageText(p))}</p>` : ''}`;
 }
 
 // --- Render: print bar ---------------------------------------------------------------
@@ -699,7 +700,7 @@ async function runJob() {
         if (!printed) {
             const p = state.printerApi.snapshot();
             job.error =
-                [p.messageTitle, p.message, p.messageRemedy].filter(Boolean).join('. ') ||
+                printerMessageText(p) ||
                 reason ||
                 (p.connected ? 'The printer didn’t accept the labels.' : 'The printer disconnected.');
             break;
