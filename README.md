@@ -28,11 +28,25 @@ Download the latest version for your system from the [Releases page](https://git
 | macOS | `Labelbench-…-mac-arm64.dmg` (Apple silicon) or `-x64.dmg` (Intel) |
 | Linux | `Labelbench-…-linux-x86_64.AppImage`, or the `.deb` |
 
-The builds aren't code-signed yet, so the first launch needs one extra step:
+The builds aren't signed by a registered Apple or Microsoft developer yet, so the first launch needs one extra step.
 
-- **Windows**: if SmartScreen says it protected your PC, click **More info**, then **Run anyway**.
-- **macOS**: open the app once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. When asked, allow Labelbench to use Bluetooth. If macOS says the app "is damaged and can't be opened", it means only that it was downloaded and isn't signed by a registered Apple developer; run `xattr -cr /Applications/Labelbench.app` in Terminal, then open it again.
-- **Linux**: make the AppImage executable (`chmod +x Labelbench-*.AppImage`). Bluetooth needs BlueZ, which most desktop distributions include.
+**macOS**
+
+1. Open the `.dmg` and drag **Labelbench** to **Applications**.
+2. Open Labelbench. macOS says *"Labelbench.app" Not Opened* because Apple couldn't check it. Click **Done** (not Move to Bin).
+3. Open **System Settings → Privacy & Security**, scroll down to **Security**, and click **Open Anyway** next to the line about Labelbench. Confirm with your password or Touch ID.
+4. Open Labelbench again and click **Open**. From now on it opens normally.
+5. The first time you connect a printer, allow Labelbench to use Bluetooth.
+
+If macOS instead says the app *"is damaged and can't be opened"*, it isn't broken; macOS says this about some downloaded apps. Run this in Terminal, then open it again:
+
+```sh
+xattr -cr /Applications/Labelbench.app
+```
+
+**Windows**: if SmartScreen says it protected your PC, click **More info**, then **Run anyway**.
+
+**Linux**: make the AppImage executable (`chmod +x Labelbench-*.AppImage`). Bluetooth needs BlueZ, which most desktop distributions include.
 
 Bluetooth must be turned on in your computer's settings.
 
