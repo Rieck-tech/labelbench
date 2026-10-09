@@ -13,9 +13,12 @@ import { columnsIn, normalizeParts } from './lib/parts.js';
 import { partsEditorHtml, setUpPartsEditors, insertIntoLastEditor } from './part-editor.js';
 import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
 import { printerMessageText } from './lib/printer-message.js';
+import { connectionOutcome } from './lib/connection.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
 const SETTINGS_KEY = 'labelbench:settings-v2';
+// The desktop app is Electron, which says so in its user agent.
+const IS_DESKTOP_APP = /\bElectron\//.test(navigator.userAgent);
 const DESIGN_FORMAT = 'labelbench-design';
 const MM_PER_PT = 0.3528;
 
@@ -596,20 +599,41 @@ async function setUpPrinter() {
 }
 
 async function connectPrinter() {
-    // While the browser's printer picker is open, the header says that finding the printer can take a while.
+    // While the printer picker is open, the header says that finding the printer can take a while.
     state.connecting = true;
     renderPrinter();
+    const started = performance.now();
     let problem = null;
     try {
         problem = await state.printerApi.connect();
     } catch (error) {
-        // Closing the Bluetooth picker without choosing also lands here; that needs no message.
+        problem = `${error?.name ?? 'Error'}: ${error?.message ?? error}`;
         if (error?.name !== 'NotFoundError') console.error(error);
     } finally {
         state.connecting = false;
         renderPrinter();
     }
-    if (problem) await showDialog({ title: 'Couldn’t connect', body: `<p>${escapeHtml(problem)}</p><p>Check that the printer is on and close to this computer, then try again. If its Bluetooth light is solid blue, another device may be using it.</p>`, confirm: 'OK' });
+
+    const outcome = connectionOutcome({
+        connected: state.printer.connected,
+        problem,
+        elapsedMs: performance.now() - started,
+        desktop: IS_DESKTOP_APP,
+    });
+    if (outcome === 'unavailable') {
+        await showDialog({
+            title: 'Bluetooth isn’t available',
+            body: `<p>Labelbench couldn’t start looking for printers. Check that Bluetooth is turned on.</p>
+                   <p>On a Mac, also open <strong>System Settings → Privacy &amp; Security → Bluetooth</strong> and allow Labelbench. If you started Labelbench from a terminal, allow the terminal app instead.</p>`,
+            confirm: 'OK',
+        });
+    } else if (outcome === 'failed') {
+        await showDialog({
+            title: 'Couldn’t connect',
+            body: `${problem ? `<p>${escapeHtml(problem)}</p>` : ''}<p>Check that the printer is on and close to this computer, then try again. If its Bluetooth light is solid blue, another device may be using it.</p>`,
+            confirm: 'OK',
+        });
+    }
     return state.printer.connected;
 }
 
