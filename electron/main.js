@@ -20,6 +20,10 @@ const DESKTOP_PORT = 5512;
 
 const here = (file) => fileURLToPath(new URL(file, import.meta.url));
 
+// Run from source (npm run app), the Dock would show Electron's own icon. The name there stays
+// "Electron", since it comes from the Electron app bundle; installed builds are named Labelbench.
+const ICON = here('./icon.png');
+
 // Chromium on Linux only offers Web Bluetooth with this switch.
 if (process.platform === 'linux') {
     app.commandLine.appendSwitch('enable-experimental-web-platform-features');
@@ -46,6 +50,8 @@ if (!app.requestSingleInstanceLock()) {
             return;
         }
 
+        // Installed builds get their icon from the app bundle; this is for running from source.
+        if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(ICON);
         lockDownSession();
         mainWindow = createMainWindow(url);
         mainWindow.on('closed', () => {
@@ -64,6 +70,7 @@ function createMainWindow(url) {
         minWidth: 900,
         minHeight: 600,
         title: 'Labelbench',
+        icon: ICON,
         backgroundColor: '#eef1f0',
         show: false,
         webPreferences: {

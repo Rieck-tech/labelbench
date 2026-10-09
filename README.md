@@ -105,6 +105,7 @@ electron/main.js           desktop app: window, server, Bluetooth handling
 electron/bluetooth-chooser.js, picker.html
                            the printer picker (Electron has no built-in one)
 examples/                  sample data
+build/icon.svg             app icon source; build/icon.png (1024 px) and electron/icon.png (512 px) are made from it
 tests/                     Vitest tests
 ```
 
