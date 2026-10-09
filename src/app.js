@@ -478,8 +478,8 @@ function renderPrinter() {
     el.innerHTML = `
         <span class="status-dot is-on" aria-hidden="true"></span>
         <span class="printer-name">${escapeHtml(p.name || p.model || 'Printer')}</span>
-        ${cartridgeInfo(p)}
         ${batteryIndicator(p)}
+        ${cartridgeInfo(p)}
         <span class="printer-actions">
             <button type="button" class="quiet" data-action="feed">Feed</button>
             <button type="button" class="quiet" data-action="cut">Cut</button>
