@@ -14,6 +14,7 @@ import { partsEditorHtml, setUpPartsEditors, insertIntoLastEditor } from './part
 import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
 import { printerMessageText } from './lib/printer-message.js';
 import { connectionOutcome } from './lib/connection.js';
+import { emptyMessageLog, updateMessageLog, clearMessageLog } from './lib/message-log.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
 const SETTINGS_KEY = 'labelbench:settings-v2';
@@ -52,6 +53,7 @@ const state = {
     notice: null,
     printer: { connected: false },
     connecting: false,
+    messageLog: emptyMessageLog(),
     printerApi: null,
     bluetooth: 'checking', // 'checking' | 'ok' | 'unsupported' | 'failed'
     job: null,
@@ -472,6 +474,7 @@ function renderPrinter() {
     }
 
     const battery = p.battery != null ? `Battery ${p.battery}%${p.charging ? ', charging' : ''}` : '';
+    const messageCount = state.messageLog.entries.length;
     el.innerHTML = `
         <span class="status-dot is-on" aria-hidden="true"></span>
         <span class="printer-name">${escapeHtml(p.name || p.model || 'Printer')}</span>
@@ -480,9 +483,10 @@ function renderPrinter() {
         <span class="printer-actions">
             <button type="button" class="quiet" data-action="feed">Feed</button>
             <button type="button" class="quiet" data-action="cut">Cut</button>
+            ${messageCount ? `<button type="button" class="quiet" data-action="printer-messages">Messages (${messageCount})</button>` : ''}
             <button type="button" class="quiet" data-action="disconnect">Disconnect</button>
         </span>
-        ${printerMessageText(p) ? `<p class="printer-problem">${escapeHtml(printerMessageText(p))}</p>` : ''}`;
+        ${state.messageLog.current ? `<p class="printer-problem">${escapeHtml(state.messageLog.current)}</p>` : ''}`;
 }
 
 // --- Render: print bar ---------------------------------------------------------------
@@ -575,12 +579,33 @@ function showDialog({ title, body, confirm, cancel }) {
 
 // --- Printer ---------------------------------------------------------------------------
 
+/** The printer's recent messages, which it often shows for only a moment. */
+async function showPrinterMessages() {
+    const time = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const items = state.messageLog.entries
+        .map((entry) => `<li><time datetime="${entry.time.toISOString()}">${time(entry.time)}</time> ${escapeHtml(entry.text)}</li>`)
+        .join('');
+    const dialog = $('#dialog');
+    await showDialog({
+        title: 'Printer messages',
+        body: `<p class="muted">The printer often shows a message for only a moment. The most recent are first.</p>
+               <ul class="message-log">${items}</ul>
+               <p><button value="clear" class="quiet inline">Clear list</button></p>`,
+        confirm: 'Close',
+    });
+    if (dialog.returnValue === 'clear') {
+        state.messageLog = clearMessageLog(state.messageLog);
+        renderPrinter();
+    }
+}
+
 async function setUpPrinter() {
     try {
         const { createPrinter } = await import('./printer.js');
         state.printerApi = createPrinter((snapshot) => {
             const before = JSON.stringify([state.printer.connected, labelSizeFromPrinter(state.printer), state.printer.supplyName]);
             state.printer = snapshot;
+            state.messageLog = updateMessageLog(state.messageLog, snapshot.connected ? printerMessageText(snapshot) : '', new Date());
             renderPrinter();
             // Redraw the design when the printer connects, disconnects or gets another cartridge.
             if (before !== JSON.stringify([snapshot.connected, labelSizeFromPrinter(snapshot), snapshot.supplyName])) {
@@ -807,6 +832,7 @@ const actions = {
     'import-template': () => $('#template-input').click(),
     connect: connectPrinter,
     disconnect: () => state.printerApi.disconnect(),
+    'printer-messages': showPrinterMessages,
     feed: () => state.printerApi.feed(),
     cut: () => state.printerApi.cut(),
     'print-test': () => startPrint([{ rowIndex: state.previewIndex, row: previewRow() }]),
