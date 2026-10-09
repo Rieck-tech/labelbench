@@ -1,4 +1,4 @@
-// Labelbench: load a CSV or Excel file, design a label, print a batch on a Brady M511.
+// Labelbench: load a CSV or Excel file, design a label, print a batch on a Brady label printer.
 //
 // The app keeps everything in one `state` object. When something changes, the
 // matching render function redraws that part of the page from `state`.
@@ -12,9 +12,15 @@ import { buildPrintQueue, parseRowRange } from './lib/selection.js';
 import { columnsIn, normalizeParts } from './lib/parts.js';
 import { partsEditorHtml, setUpPartsEditors, insertIntoLastEditor } from './part-editor.js';
 import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
+import { printerMessageText } from './lib/printer-message.js';
+import { connectionOutcome } from './lib/connection.js';
+import { emptyMessageLog, updateMessageLog, clearMessageLog } from './lib/message-log.js';
+import { batteryBars } from './lib/battery.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
 const SETTINGS_KEY = 'labelbench:settings-v2';
+// The desktop app is Electron, which says so in its user agent.
+const IS_DESKTOP_APP = /\bElectron\//.test(navigator.userAgent);
 const DESIGN_FORMAT = 'labelbench-design';
 const MM_PER_PT = 0.3528;
 
@@ -47,6 +53,8 @@ const state = {
     showRaster: false,
     notice: null,
     printer: { connected: false },
+    connecting: false,
+    messageLog: emptyMessageLog(),
     printerApi: null,
     bluetooth: 'checking', // 'checking' | 'ok' | 'unsupported' | 'failed'
     job: null,
@@ -440,11 +448,22 @@ function renderPrinter() {
     const el = $('#printer');
 
     if (state.bluetooth === 'unsupported') {
-        el.innerHTML = `<p class="printer-problem">This browser can’t use Bluetooth. To print, open <strong>${escapeHtml(location.origin)}</strong> in Chrome or Edge.</p>`;
+        el.innerHTML = `<p class="printer-problem">This browser can’t use Bluetooth. To print, use the Labelbench app, or open <strong>${escapeHtml(location.origin)}</strong> in Chrome or Edge.</p>`;
+        return;
+    }
+    if (state.bluetooth === 'off') {
+        el.innerHTML = '<p class="printer-problem">Bluetooth is turned off, or this computer has none. Turn Bluetooth on, then restart Labelbench.</p>';
         return;
     }
     if (state.bluetooth === 'failed') {
-        el.innerHTML = '<p class="printer-problem">Brady’s printer library didn’t load. Run <code>npm install</code> and restart Labelbench.</p>';
+        el.innerHTML = '<p class="printer-problem">Brady’s printer library didn’t load. If you run Labelbench from source, run <code>npm install</code> and restart it.</p>';
+        return;
+    }
+    if (!p.connected && state.connecting) {
+        el.innerHTML = `
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="muted">Looking for printers. It can take up to a minute for yours to show up.</span>
+            <button type="button" class="dark" disabled>Connecting…</button>`;
         return;
     }
     if (!p.connected) {
@@ -455,18 +474,53 @@ function renderPrinter() {
         return;
     }
 
-    const battery = p.battery != null ? `Battery ${p.battery}%${p.charging ? ', charging' : ''}` : '';
+    const messageCount = state.messageLog.entries.length;
     el.innerHTML = `
         <span class="status-dot is-on" aria-hidden="true"></span>
         <span class="printer-name">${escapeHtml(p.name || p.model || 'Printer')}</span>
-        ${p.supplyName ? `<span class="muted">${escapeHtml(p.supplyName)}${p.supplyRemaining != null ? `, ${p.supplyRemaining}% left` : ''}</span>` : ''}
-        ${battery ? `<span class="muted">${battery}</span>` : ''}
+        ${batteryIndicator(p)}
+        ${cartridgeInfo(p)}
         <span class="printer-actions">
             <button type="button" class="quiet" data-action="feed">Feed</button>
             <button type="button" class="quiet" data-action="cut">Cut</button>
+            ${messageCount ? `<button type="button" class="quiet" data-action="printer-messages">Messages (${messageCount})</button>` : ''}
             <button type="button" class="quiet" data-action="disconnect">Disconnect</button>
         </span>
-        ${p.messageTitle || p.message ? `<p class="printer-problem">${escapeHtml([p.messageTitle, p.message, p.messageRemedy].filter(Boolean).join('. '))}</p>` : ''}`;
+        ${state.messageLog.current ? `<p class="printer-problem">${escapeHtml(state.messageLog.current)}</p>` : ''}`;
+}
+
+/** The loaded label cartridge: an icon of a label roll, the part number and how much is left. */
+function cartridgeInfo(p) {
+    if (!p.supplyName) return '';
+    const left = p.supplyRemaining != null ? `${p.supplyRemaining}% left` : '';
+    const label = `Label cartridge ${p.supplyName}${left ? `, ${left}` : ''}`;
+    return `<span class="cartridge" title="${escapeHtml(label)}">
+            <svg viewBox="0 0 22 14" aria-hidden="true">
+                <circle class="roll" cx="7" cy="7" r="6"/>
+                <circle class="core" cx="7" cy="7" r="2"/>
+                <path class="tape" d="M7 13 H20.5 V10.5 H11.5"/>
+            </svg>
+            <span class="visually-hidden">Label cartridge</span>
+            <span>${escapeHtml(p.supplyName)}${left ? ` <span aria-hidden="true">·</span> ${left}` : ''}</span>
+        </span>`;
+}
+
+/** The battery as four bars, like the lights on the printer, with a bolt while charging. */
+function batteryIndicator(p) {
+    const level = batteryBars(p.battery);
+    if (!level) return '';
+    const label = `Battery: ${level.bars} of 4 bars${level.low ? ', low' : ''}${p.charging ? ', charging' : ''}`;
+    const segments = [0, 1, 2, 3]
+        .map((i) => `<rect class="${i < level.bars ? 'on' : 'off'}" x="${2.5 + i * 5}" y="2.5" width="4" height="7" rx="1"/>`)
+        .join('');
+    const bolt = p.charging ? '<path class="bolt" d="M30 1 L27 7 H30 L29 11 L33 5 H30 Z"/>' : '';
+    return `<span class="battery${level.low && !p.charging ? ' is-low' : ''}" role="img" aria-label="${label}" title="${label}">
+            <svg viewBox="0 0 ${p.charging ? 34 : 26} 12" aria-hidden="true">
+                <rect class="case" x="0.5" y="0.5" width="22" height="11" rx="2.5"/>
+                <rect class="nub" x="23.5" y="4" width="1.8" height="4" rx="0.9"/>
+                ${segments}${bolt}
+            </svg>
+        </span>`;
 }
 
 // --- Render: print bar ---------------------------------------------------------------
@@ -559,12 +613,33 @@ function showDialog({ title, body, confirm, cancel }) {
 
 // --- Printer ---------------------------------------------------------------------------
 
+/** The printer's recent messages, which it often shows for only a moment. */
+async function showPrinterMessages() {
+    const time = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const items = state.messageLog.entries
+        .map((entry) => `<li><time datetime="${entry.time.toISOString()}">${time(entry.time)}</time> ${escapeHtml(entry.text)}</li>`)
+        .join('');
+    const dialog = $('#dialog');
+    await showDialog({
+        title: 'Printer messages',
+        body: `<p class="muted">The printer often shows a message for only a moment. The most recent are first.</p>
+               <ul class="message-log">${items}</ul>
+               <p><button value="clear" class="quiet inline">Clear list</button></p>`,
+        confirm: 'Close',
+    });
+    if (dialog.returnValue === 'clear') {
+        state.messageLog = clearMessageLog(state.messageLog);
+        renderPrinter();
+    }
+}
+
 async function setUpPrinter() {
     try {
         const { createPrinter } = await import('./printer.js');
         state.printerApi = createPrinter((snapshot) => {
             const before = JSON.stringify([state.printer.connected, labelSizeFromPrinter(state.printer), state.printer.supplyName]);
             state.printer = snapshot;
+            state.messageLog = updateMessageLog(state.messageLog, snapshot.connected ? printerMessageText(snapshot) : '', new Date());
             renderPrinter();
             // Redraw the design when the printer connects, disconnects or gets another cartridge.
             if (before !== JSON.stringify([snapshot.connected, labelSizeFromPrinter(snapshot), snapshot.supplyName])) {
@@ -573,7 +648,7 @@ async function setUpPrinter() {
                 renderPrintBar();
             }
         });
-        state.bluetooth = (await state.printerApi.isSupportedBrowser()) ? 'ok' : 'unsupported';
+        state.bluetooth = await state.printerApi.bluetoothStatus();
     } catch (error) {
         console.error(error);
         state.bluetooth = 'failed';
@@ -582,13 +657,59 @@ async function setUpPrinter() {
     renderPrintBar();
 }
 
-async function connectPrinter() {
+/** One connection attempt: { result, problem }, where result is what connectionOutcome() says. */
+async function tryToConnect() {
+    const started = performance.now();
+    let problem = null;
     try {
-        const problem = await state.printerApi.connect();
-        if (problem) await showDialog({ title: 'Couldn’t connect', body: `<p>${escapeHtml(problem)}</p><p>Check that the printer is on and close to this computer, then try again. If its Bluetooth light is solid blue, another device may be using it.</p>`, confirm: 'OK' });
+        problem = await state.printerApi.connect();
     } catch (error) {
-        // Closing the Bluetooth picker without choosing also lands here; that needs no message.
+        problem = `${error?.name ?? 'Error'}: ${error?.message ?? error}`;
         if (error?.name !== 'NotFoundError') console.error(error);
+    }
+    const result = connectionOutcome({
+        connected: state.printer.connected,
+        problem,
+        elapsedMs: performance.now() - started,
+        desktop: IS_DESKTOP_APP,
+    });
+    return { result, problem };
+}
+
+async function connectPrinter() {
+    // While the printer picker is open, the header says that finding the printer can take a while.
+    state.connecting = true;
+    renderPrinter();
+    let attempt;
+    try {
+        attempt = await tryToConnect();
+        // On macOS, the first search after starting the desktop app can come before the system
+        // reports that Bluetooth is on, and Electron then cancels it at once. Wait and try once more.
+        if (attempt.result === 'unavailable') {
+            await new Promise((resolve) => setTimeout(resolve, 700));
+            attempt = await tryToConnect();
+            // A search must follow soon after a click; if the browser refuses the retry, ask for another click.
+            if (/SecurityError/.test(attempt.problem ?? '')) attempt = { result: 'unavailable', problem: attempt.problem };
+        }
+    } finally {
+        state.connecting = false;
+        renderPrinter();
+    }
+    const { result: outcome, problem } = attempt;
+
+    if (outcome === 'unavailable') {
+        await showDialog({
+            title: 'Bluetooth isn’t available',
+            body: `<p>Labelbench couldn’t start looking for printers. Please try again. If this keeps happening, check that Bluetooth is turned on.</p>
+                   <p>On a Mac, also open <strong>System Settings → Privacy &amp; Security → Bluetooth</strong> and allow Labelbench. If you started Labelbench from a terminal, allow the terminal app instead.</p>`,
+            confirm: 'OK',
+        });
+    } else if (outcome === 'failed') {
+        await showDialog({
+            title: 'Couldn’t connect',
+            body: `${problem ? `<p>${escapeHtml(problem)}</p>` : ''}<p>Check that the printer is on and close to this computer, then try again. If its Bluetooth light is solid blue, another device may be using it.</p>`,
+            confirm: 'OK',
+        });
     }
     return state.printer.connected;
 }
@@ -680,7 +801,7 @@ async function runJob() {
         if (!printed) {
             const p = state.printerApi.snapshot();
             job.error =
-                [p.messageTitle, p.message, p.messageRemedy].filter(Boolean).join('. ') ||
+                printerMessageText(p) ||
                 reason ||
                 (p.connected ? 'The printer didn’t accept the labels.' : 'The printer disconnected.');
             break;
@@ -745,6 +866,7 @@ const actions = {
     'import-template': () => $('#template-input').click(),
     connect: connectPrinter,
     disconnect: () => state.printerApi.disconnect(),
+    'printer-messages': showPrinterMessages,
     feed: () => state.printerApi.feed(),
     cut: () => state.printerApi.cut(),
     'print-test': () => startPrint([{ rowIndex: state.previewIndex, row: previewRow() }]),

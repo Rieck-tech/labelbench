@@ -1,11 +1,13 @@
-id,title,subtitle,code,date
-1,Kjøkken – Skuff 1,Bestikk og øser,LBL-0001,2026-10-08
-2,Kjøkken – Skuff 2,Kjøkkenhåndklær,LBL-0002,2026-10-08
-3,Bod – Hylle A,Julepynt,LBL-0003,2026-10-08
-4,Bod – Hylle B,Skøyter og ski,LBL-0004,2026-10-08
-5,Garasje – Kasse 1,Skruer og plugger,LBL-0005,2026-10-09
-6,Garasje – Kasse 2,"Kabler, ladere og adaptere",LBL-0006,2026-10-09
-7,Kontor – Perm 1,Kvitteringer 2026,LBL-0007,2026-10-09
-8,Kontor – Perm 2,Forsikring og avtaler,LBL-0008,2026-10-09
-9,Loft – Eske 1,Barneklær str. 110–122,LBL-0009,2026-10-10
-10,Loft – Eske 2,"Bøker, tegneserier og spill",LBL-0010,2026-10-10
+id,title,subtitle,code,location,serial,date
+1,Core switch 1,"48-port PoE, 10G uplinks",NET-0001,Server room – Rack A,SN-4F7K2Q9,2026-03-14
+2,Core switch 2,"48-port PoE, 10G uplinks",NET-0002,Server room – Rack A,SN-4F7K2R1,2026-03-14
+3,Firewall,Primary internet edge,NET-0003,Server room – Rack A,SN-8B2D6M4,2026-03-14
+4,Patch panel A,Ports 1–24,NET-0004,Server room – Rack A,,2026-03-15
+5,File server,"2U, 8 × 4 TB RAID 6",SRV-0001,Server room – Rack B,SN-7H3P9X5,2026-04-02
+6,Hypervisor host 1,"64 cores, 512 GB RAM",SRV-0002,Server room – Rack B,SN-2C8V5N7,2026-04-02
+7,UPS,"3 kVA, 15 min runtime",PWR-0001,Server room – Rack B,SN-9T1L4W8,2026-04-03
+8,Wireless access point,"Floor 2, east wing",NET-0005,Ceiling – Room 204,SN-5J6Q3E2,2026-05-11
+9,Laptop dock,"USB-C, dual 4K",DSK-0012,Desk 3.14,SN-3K9B7U1,2026-06-20
+10,Label printer,Bluetooth label printer,LAB-0001,Workshop – Bench 2,SN-6R2Y8A3,2026-07-01
+11,Spare SSDs,"4 × 2 TB NVMe",STO-0007,Storage – Shelf 2,,2026-08-09
+12,Cable kit,"Patch cables, 0.5–3 m",STO-0008,Storage – Shelf 3,,2026-08-09

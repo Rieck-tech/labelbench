@@ -1,20 +1,122 @@
 {
   "name": "labelbench",
+  "productName": "Labelbench",
   "version": "0.1.0",
-  "description": "Batch-print labels from CSV/Excel to a Brady M511 from a local web app",
+  "description": "Batch-print labels from CSV or Excel files to Brady Bluetooth label printers",
+  "homepage": "https://github.com/Rieck-tech/labelbench",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rieck-tech/labelbench.git"
+  },
+  "author": "Labelbench contributors",
+  "license": "MIT",
+  "type": "module",
+  "main": "electron/main.js",
   "scripts": {
-    "test": "vitest run",
     "start": "node server.mjs",
+    "app": "electron .",
+    "pack": "electron-builder --dir --publish never",
+    "dist": "electron-builder --publish never",
+    "test": "vitest run",
     "test:watch": "vitest"
   },
-  "license": "MIT",
   "dependencies": {
     "@bradycorporation/brady-web-sdk": "^3.3.2",
     "bwip-js": "^4.11.4",
     "exceljs": "^4.4.0"
   },
   "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
     "vitest": "^5.0.3"
   },
-  "type": "module"
+  "build": {
+    "appId": "io.github.labelbench",
+    "productName": "Labelbench",
+    "artifactName": "Labelbench-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "index.html",
+      "server.mjs",
+      "src/**/*",
+      "examples/**/*",
+      "electron/**/*",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "package.json",
+      "!node_modules/**/*",
+      "node_modules/@bradycorporation/brady-web-sdk/package.json",
+      "node_modules/@bradycorporation/brady-web-sdk/LICENSE.md",
+      "node_modules/@bradycorporation/brady-web-sdk/dist/**/*",
+      "node_modules/bwip-js/package.json",
+      "node_modules/bwip-js/LICENSE*",
+      "node_modules/bwip-js/dist/**/*",
+      "node_modules/exceljs/package.json",
+      "node_modules/exceljs/LICENSE",
+      "node_modules/exceljs/dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/@bradycorporation/brady-web-sdk/LICENSE.md",
+        "to": "licenses/brady-web-sdk-LICENSE.md"
+      },
+      {
+        "from": "LICENSE",
+        "to": "licenses/labelbench-LICENSE"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "licenses/THIRD_PARTY_NOTICES.md"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "Labelbench uses Bluetooth to connect to your label printer."
+      }
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Office",
+      "maintainer": "Labelbench contributors",
+      "syncDesktopName": true
+    }
+  },
+  "desktopName": "labelbench.desktop"
 }

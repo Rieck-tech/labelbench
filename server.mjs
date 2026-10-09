@@ -4,10 +4,12 @@
 //   npm start               starts the server and opens Chrome
 //   npm start -- --no-open  starts the server only
 //   PORT=8080 npm start     uses another port
+//
+// The desktop app (electron/main.js) imports startServer() and runs the same server.
 
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize, sep } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 
@@ -38,7 +40,7 @@ const TYPES = {
     '.ico': 'image/x-icon',
 };
 
-const server = createServer(async (request, response) => {
+async function handle(request, response) {
     try {
         const url = new URL(request.url, `http://${HOST}`);
         let path = decodeURIComponent(url.pathname).replace(/^\/+/, '');
@@ -59,32 +61,69 @@ const server = createServer(async (request, response) => {
     } catch {
         send(response, 404, 'Not found');
     }
-});
+}
 
 function send(response, status, text) {
     response.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
     response.end(text);
 }
 
-server.listen(PORT, HOST, () => {
-    // Web Bluetooth only works on secure pages; "localhost" counts as secure, so use that name.
-    const address = `http://localhost:${PORT}/`;
-    console.log(`Labelbench is running at ${address}`);
-    console.log('Keep this window open while printing. Press Ctrl+C to stop.');
+/**
+ * Start the server. Resolves with { server, port, url } once it is listening.
+ * With `fallback`, a busy port is swapped for any free one instead of failing.
+ */
+export function startServer({ port = PORT, fallback = false } = {}) {
+    return new Promise((resolvePromise, reject) => {
+        const server = createServer(handle);
 
-    if (!process.argv.includes('--no-open') && process.platform === 'darwin') {
-        // Safari has no Web Bluetooth, so ask for Chrome and fall back to the default browser.
-        execFile('open', ['-a', 'Google Chrome', address], (error) => {
-            if (error) execFile('open', [address]);
+        server.once('error', (error) => {
+            if (error.code === 'EADDRINUSE' && fallback && port !== 0) {
+                startServer({ port: 0 }).then(resolvePromise, reject);
+            } else {
+                reject(error);
+            }
         });
-    }
-});
 
-server.on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use. Is Labelbench already running? Try http://localhost:${PORT}/`);
+        server.listen(port, HOST, () => {
+            const actual = server.address().port;
+            // Web Bluetooth only works on secure pages; "localhost" counts as secure, so use that name.
+            resolvePromise({ server, port: actual, url: `http://localhost:${actual}/` });
+        });
+    });
+}
+
+/**
+ * Open the app in a browser that has Web Bluetooth. On macOS the default browser is often
+ * Safari, which has none, so ask for Chrome first. Elsewhere the default browser is used.
+ */
+function openInBrowser(url) {
+    const ignore = () => {};
+    if (process.platform === 'darwin') {
+        execFile('open', ['-a', 'Google Chrome', url], (error) => {
+            if (error) execFile('open', [url], ignore);
+        });
+    } else if (process.platform === 'win32') {
+        execFile('rundll32', ['url.dll,FileProtocolHandler', url], ignore);
     } else {
-        console.error(error.message);
+        execFile('xdg-open', [url], ignore);
     }
-    process.exit(1);
-});
+}
+
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMain) {
+    try {
+        const { url } = await startServer();
+        console.log(`Labelbench is running at ${url}`);
+        console.log('Keep this window open while printing. Press Ctrl+C to stop.');
+
+        if (!process.argv.includes('--no-open')) openInBrowser(url);
+    } catch (error) {
+        if (error.code === 'EADDRINUSE') {
+            console.error(`Port ${PORT} is already in use. Is Labelbench already running? Try http://localhost:${PORT}/`);
+        } else {
+            console.error(error.message);
+        }
+        process.exit(1);
+    }
+}

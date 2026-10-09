@@ -8,7 +8,7 @@ describe('cellToString', () => {
     });
 
     it('keeps text and turns numbers into text', () => {
-        expect(cellToString('Skruer')).toBe('Skruer');
+        expect(cellToString('Cables')).toBe('Cables');
         expect(cellToString(42)).toBe('42');
         expect(cellToString(0.5)).toBe('0.5');
     });
@@ -23,7 +23,7 @@ describe('cellToString', () => {
     });
 
     it('joins rich text runs', () => {
-        expect(cellToString({ richText: [{ text: 'Kjøk' }, { text: 'ken' }] })).toBe('Kjøkken');
+        expect(cellToString({ richText: [{ text: 'Swi' }, { text: 'tch' }] })).toBe('Switch');
     });
 
     it('uses the visible text of hyperlinks', () => {
@@ -39,26 +39,26 @@ describe('sheetToTable', () => {
     it('uses the first non-empty row as headers', () => {
         const values = [
             [],
-            ['Navn', 'Antall'],
-            ['Skruer', 10],
-            ['Plugger', 25],
+            ['Name', 'Qty'],
+            ['Cables', 10],
+            ['Adapters', 25],
         ];
         expect(sheetToTable(values)).toEqual({
-            headers: ['Navn', 'Antall'],
+            headers: ['Name', 'Qty'],
             rows: [
-                { Navn: 'Skruer', Antall: '10' },
-                { Navn: 'Plugger', Antall: '25' },
+                { Name: 'Cables', Qty: '10' },
+                { Name: 'Adapters', Qty: '25' },
             ],
         });
     });
 
     it('skips empty rows and names blank headers', () => {
-        const values = [['Navn', null], ['Skruer', 'x'], [null, null], ['Plugger', 'y']];
+        const values = [['Name', null], ['Cables', 'x'], [null, null], ['Adapters', 'y']];
         expect(sheetToTable(values)).toEqual({
-            headers: ['Navn', 'Column 2'],
+            headers: ['Name', 'Column 2'],
             rows: [
-                { Navn: 'Skruer', 'Column 2': 'x' },
-                { Navn: 'Plugger', 'Column 2': 'y' },
+                { Name: 'Cables', 'Column 2': 'x' },
+                { Name: 'Adapters', 'Column 2': 'y' },
             ],
         });
     });

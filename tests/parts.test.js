@@ -1,20 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { fillParts, columnsIn, normalizeParts } from '../src/lib/parts.js';
 
-const row = { Shelf: 'B', Room: 'Bod', 'Antall {stk}': '10' };
+const row = { Shelf: 'B', Room: 'Lab', 'Qty {pcs}': '10' };
 
 describe('fillParts', () => {
     it('joins fixed text and column values in order', () => {
         const parts = [{ text: 'Shelf ' }, { column: 'Shelf' }, { text: ' – ' }, { column: 'Room' }];
-        expect(fillParts(parts, row)).toBe('Shelf B – Bod');
+        expect(fillParts(parts, row)).toBe('Shelf B – Lab');
     });
 
     it('handles any column name, including braces and pipes', () => {
-        expect(fillParts([{ column: 'Antall {stk}' }, { text: ' stk' }], row)).toBe('10 stk');
+        expect(fillParts([{ column: 'Qty {pcs}' }, { text: ' pcs' }], row)).toBe('10 pcs');
     });
 
     it('uses the same column more than once', () => {
-        expect(fillParts([{ column: 'Room' }, { text: '/' }, { column: 'Room' }], row)).toBe('Bod/Bod');
+        expect(fillParts([{ column: 'Room' }, { text: '/' }, { column: 'Room' }], row)).toBe('Lab/Lab');
     });
 
     it('fills missing columns with nothing', () => {

@@ -6,8 +6,8 @@ describe('detectDelimiter', () => {
         expect(detectDelimiter('a,b,c\n1,2,3')).toBe(',');
     });
 
-    it('picks semicolon, which Norwegian Excel uses', () => {
-        expect(detectDelimiter('navn;antall\nSkruer;10')).toBe(';');
+    it('picks semicolon, which Excel uses in many European locales', () => {
+        expect(detectDelimiter('name;qty\nCables;10')).toBe(';');
     });
 
     it('picks tab for tab-separated data', () => {
@@ -21,17 +21,17 @@ describe('detectDelimiter', () => {
 
 describe('parseCsv', () => {
     it('returns headers and rows as objects keyed by header', () => {
-        const result = parseCsv('id,title\n1,Kjøkken\n2,Bod');
+        const result = parseCsv('id,title\n1,Router\n2,Switch');
         expect(result.headers).toEqual(['id', 'title']);
         expect(result.rows).toEqual([
-            { id: '1', title: 'Kjøkken' },
-            { id: '2', title: 'Bod' },
+            { id: '1', title: 'Router' },
+            { id: '2', title: 'Switch' },
         ]);
     });
 
     it('handles quoted fields with commas, quotes and newlines', () => {
-        const result = parseCsv('a,b\n"Kabler, ladere","Han sa ""hei""\nogså"');
-        expect(result.rows[0]).toEqual({ a: 'Kabler, ladere', b: 'Han sa "hei"\nogså' });
+        const result = parseCsv('a,b\n"Cables, adapters","She said ""hi""\nagain"');
+        expect(result.rows[0]).toEqual({ a: 'Cables, adapters', b: 'She said "hi"\nagain' });
     });
 
     it('handles CRLF line endings and a UTF-8 BOM', () => {
@@ -57,8 +57,8 @@ describe('parseCsv', () => {
     });
 
     it('parses the sample file used in the README', () => {
-        const text = 'id,title,subtitle\n6,Garasje – Kasse 2,"Kabler, ladere og adaptere"';
-        expect(parseCsv(text).rows[0].subtitle).toBe('Kabler, ladere og adaptere');
+        const text = 'id,title,subtitle\n6,Rack B – Shelf 2,"Cables, chargers and adapters"';
+        expect(parseCsv(text).rows[0].subtitle).toBe('Cables, chargers and adapters');
     });
 
     it('returns no headers and no rows for empty input', () => {
