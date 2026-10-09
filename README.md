@@ -88,6 +88,7 @@ npm start
 npm test          # tests (Vitest)
 npm run test:watch
 npm run app       # the desktop app, from source
+npm run pack      # build the desktop app into dist/ without an installer (named and iconed like a release)
 npm run dist      # build an installer for this system into dist/
 ```
 

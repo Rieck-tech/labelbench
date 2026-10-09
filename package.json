@@ -15,9 +15,10 @@
   "scripts": {
     "start": "node server.mjs",
     "app": "electron .",
+    "pack": "electron-builder --dir --publish never",
+    "dist": "electron-builder --publish never",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "dist": "electron-builder --publish never"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@bradycorporation/brady-web-sdk": "^3.3.2",
