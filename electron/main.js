@@ -73,7 +73,13 @@ function createMainWindow(url) {
         },
     });
 
-    window.once('ready-to-show', () => window.show());
+    window.once('ready-to-show', () => {
+        window.show();
+        window.focus();
+        // Started from a terminal (npm run app), macOS leaves the app behind the terminal
+        // unless it asks to come to the front.
+        if (process.platform === 'darwin') app.focus({ steal: true });
+    });
     keepInsideApp(window, url);
     handleBluetooth(window);
     window.loadURL(url);
