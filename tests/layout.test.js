@@ -34,13 +34,13 @@ const textElements = (svg) =>
 
 describe('renderLabel', () => {
     it('makes an SVG measured in millimetres', () => {
-        const { svg } = renderLabel(template(), { title: 'Bod' }, deps);
+        const { svg } = renderLabel(template(), { title: 'Router' }, deps);
         expect(svg).toMatch(/^<svg [^>]*width="60mm" height="20mm" viewBox="0 0 60 20"/);
     });
 
     it('fills in column values and escapes characters that would break the SVG', () => {
-        const { svg } = renderLabel(template(), { title: 'Skruer & <plugger>' }, deps);
-        expect(textElements(svg)[0].content).toBe('Skruer &amp; &lt;plugger&gt;');
+        const { svg } = renderLabel(template(), { title: 'Cables & <adapters>' }, deps);
+        expect(textElements(svg)[0].content).toBe('Cables &amp; &lt;adapters&gt;');
     });
 
     it('leaves out lines that end up empty', () => {
@@ -50,12 +50,12 @@ describe('renderLabel', () => {
                 { parts: [{ column: 'subtitle' }], sizeMm: 4, bold: false, align: 'left' },
             ],
         });
-        const { svg } = renderLabel(t, { title: 'Bod', subtitle: '' }, deps);
+        const { svg } = renderLabel(t, { title: 'Router', subtitle: '' }, deps);
         expect(textElements(svg)).toHaveLength(1);
     });
 
     it('centres a single line vertically', () => {
-        const { svg } = renderLabel(template(), { title: 'Bod' }, deps);
+        const { svg } = renderLabel(template(), { title: 'Router' }, deps);
         const [line] = textElements(svg);
         // Baseline sits a little below the middle of a 20 mm label.
         expect(line.y).toBeGreaterThan(10);
@@ -86,13 +86,13 @@ describe('renderLabel', () => {
     });
 
     it('wraps a long line onto a second line when wrapping is on', () => {
-        // 16 chars at 5 mm = 40 mm; "Kabler ladere og" and "adaptere" each fit in 30 mm.
+        // "Cables and power" (16 chars) and "adapters" each fit in 30 mm.
         const t = template({
             widthMm: 34,
-            lines: [{ parts: [{ text: 'Kabler ladere og adaptere' }], sizeMm: 3.6, bold: false, align: 'left', wrap: true }],
+            lines: [{ parts: [{ text: 'Cables and power adapters' }], sizeMm: 3.6, bold: false, align: 'left', wrap: true }],
         });
         const lines = textElements(renderLabel(t, {}, deps).svg);
-        expect(lines.map((l) => l.content)).toEqual(['Kabler ladere og', 'adaptere']);
+        expect(lines.map((l) => l.content)).toEqual(['Cables and power', 'adapters']);
         expect(lines[0].size).toBe(3.6);
         expect(lines[1].y).toBeGreaterThan(lines[0].y);
     });
@@ -100,7 +100,7 @@ describe('renderLabel', () => {
     it('wraps onto at most two lines, then shrinks and cuts the last one', () => {
         const t = template({
             widthMm: 24,
-            lines: [{ parts: [{ text: 'en to tre fire fem seks sju åtte ni ti elleve tolv' }], sizeMm: 5, bold: false, align: 'left', wrap: true }],
+            lines: [{ parts: [{ text: 'one two three four five six seven eight nine ten eleven twelve' }], sizeMm: 5, bold: false, align: 'left', wrap: true }],
         });
         const { svg, warnings } = renderLabel(t, {}, deps);
         const lines = textElements(svg);
@@ -111,7 +111,7 @@ describe('renderLabel', () => {
 
     it('shrinks a little rather than wrap, when that is enough', () => {
         // 25 chars at 5 mm = 62.5 mm; at 90 % size it is 56.25... so use 24 chars = 60 mm → 93 %.
-        const t = template({ lines: [{ parts: [{ text: 'Garasje – Kasse nummer 2' }], sizeMm: 5, bold: false, align: 'left', wrap: true }] });
+        const t = template({ lines: [{ parts: [{ text: 'Rack A – Switch number 2' }], sizeMm: 5, bold: false, align: 'left', wrap: true }] });
         const lines = textElements(renderLabel(t, {}, deps).svg);
         expect(lines).toHaveLength(1);
         expect(lines[0].size).toBeCloseTo(56 / 12, 2);
@@ -120,16 +120,16 @@ describe('renderLabel', () => {
     it('keeps a dash with the word before it when wrapping', () => {
         const t = template({
             widthMm: 24,
-            lines: [{ parts: [{ text: 'Garasje – Kasse 2' }], sizeMm: 3, bold: false, align: 'left', wrap: true }],
+            lines: [{ parts: [{ text: 'Storage – Shelf 2' }], sizeMm: 3, bold: false, align: 'left', wrap: true }],
         });
         const lines = textElements(renderLabel(t, {}, deps).svg);
-        expect(lines.map((l) => l.content)).toEqual(['Garasje –', 'Kasse 2']);
+        expect(lines.map((l) => l.content)).toEqual(['Storage –', 'Shelf 2']);
     });
 
     it('gives both parts of a wrapped line the same size', () => {
         const t = template({
             widthMm: 24,
-            lines: [{ parts: [{ text: 'Kjøkkenet – Skuff 1' }], sizeMm: 5, bold: false, align: 'left', wrap: true }],
+            lines: [{ parts: [{ text: 'Workshop – Drawer 1' }], sizeMm: 5, bold: false, align: 'left', wrap: true }],
         });
         const lines = textElements(renderLabel(t, {}, deps).svg);
         expect(lines).toHaveLength(2);
@@ -147,15 +147,15 @@ describe('renderLabel', () => {
     });
 
     it('keeps a wrapped line on one line when it fits', () => {
-        const t = template({ lines: [{ parts: [{ text: 'Kort' }], sizeMm: 5, bold: false, align: 'left', wrap: true }] });
+        const t = template({ lines: [{ parts: [{ text: 'Short' }], sizeMm: 5, bold: false, align: 'left', wrap: true }] });
         expect(textElements(renderLabel(t, {}, deps).svg)).toHaveLength(1);
     });
 
     it('scales all lines down when together they are too tall', () => {
         const t = template({
             lines: [
-                { parts: [{ text: 'Én' }], sizeMm: 10, bold: true, align: 'left' },
-                { parts: [{ text: 'To' }], sizeMm: 10, bold: false, align: 'left' },
+                { parts: [{ text: 'One' }], sizeMm: 10, bold: true, align: 'left' },
+                { parts: [{ text: 'Two' }], sizeMm: 10, bold: false, align: 'left' },
             ],
         });
         const lines = textElements(renderLabel(t, {}, deps).svg);
@@ -166,7 +166,7 @@ describe('renderLabel', () => {
 
     it('puts a square code on the left and moves the text to its right', () => {
         const t = template({ code: { type: 'qrcode', parts: [{ column: 'code' }], position: 'left' } });
-        const { svg } = renderLabel(t, { title: 'Bod', code: 'LBL-1' }, deps);
+        const { svg } = renderLabel(t, { title: 'Router', code: 'LBL-1' }, deps);
         expect(svg).toContain('data-text="LBL-1"');
         expect(svg).toMatch(/<svg x="2" y="2" width="16" height="16" viewBox="0 0 10 10"/);
         // Code is 16 mm wide, then a 2 mm gap.
@@ -175,44 +175,44 @@ describe('renderLabel', () => {
 
     it('puts a square code on the right and keeps the text on the left', () => {
         const t = template({ code: { type: 'datamatrix', parts: [{ text: 'X' }], position: 'right' } });
-        const { svg } = renderLabel(t, { title: 'Bod' }, deps);
+        const { svg } = renderLabel(t, { title: 'Router' }, deps);
         expect(svg).toMatch(/<svg x="42" y="2" width="16" height="16"/);
         expect(textElements(svg)[0].x).toBe(2);
     });
 
     it('puts a linear barcode along the bottom', () => {
         const t = template({ code: { type: 'code128', parts: [{ text: 'X' }], position: 'bottom', heightPct: 40 } });
-        const { svg } = renderLabel(t, { title: 'Bod' }, deps);
+        const { svg } = renderLabel(t, { title: 'Router' }, deps);
         // 40 % of the 16 mm content height = 6.4 mm, at the bottom of the content box.
         expect(svg).toMatch(/<svg x="2" y="11.6" width="56" height="6.4" [^>]*preserveAspectRatio="none"/);
     });
 
     it('leaves the code out when its text is empty', () => {
         const t = template({ code: { type: 'qrcode', parts: [{ column: 'code' }], position: 'left' } });
-        const { svg } = renderLabel(t, { title: 'Bod', code: '' }, deps);
+        const { svg } = renderLabel(t, { title: 'Router', code: '' }, deps);
         expect(svg).not.toContain('data-type');
         expect(textElements(svg)[0].x).toBe(2);
     });
 
     it('warns instead of crashing when the barcode cannot be made', () => {
         const t = template({ code: { type: 'code128', parts: [{ text: 'BAD' }], position: 'bottom', heightPct: 40 } });
-        const { svg, warnings } = renderLabel(t, { title: 'Bod' }, deps);
+        const { svg, warnings } = renderLabel(t, { title: 'Router' }, deps);
         expect(svg).toContain('<svg');
         expect(warnings).toEqual([expect.stringContaining('BAD')]);
     });
 
     it('can print a line in capitals', () => {
-        const t = template({ lines: [{ parts: [{ text: 'Rom: ' }, { column: 'room' }], sizeMm: 5, bold: false, align: 'left', upper: true }] });
-        expect(textElements(renderLabel(t, { room: 'Kjøkken' }, deps).svg)[0].content).toBe('ROM: KJØKKEN');
+        const t = template({ lines: [{ parts: [{ text: 'Room: ' }, { column: 'room' }], sizeMm: 5, bold: false, align: 'left', upper: true }] });
+        expect(textElements(renderLabel(t, { room: 'Café' }, deps).svg)[0].content).toBe('ROOM: CAFÉ');
     });
 
     it('mixes fixed text and columns in one line', () => {
-        const t = template({ lines: [{ parts: [{ text: 'Hylle ' }, { column: 'shelf' }, { text: ' – ' }, { column: 'room' }], sizeMm: 3, bold: false, align: 'left' }] });
-        expect(textElements(renderLabel(t, { shelf: 'B', room: 'Bod' }, deps).svg)[0].content).toBe('Hylle B – Bod');
+        const t = template({ lines: [{ parts: [{ text: 'Shelf ' }, { column: 'shelf' }, { text: ' – ' }, { column: 'room' }], sizeMm: 3, bold: false, align: 'left' }] });
+        expect(textElements(renderLabel(t, { shelf: 'B', room: 'Lab' }, deps).svg)[0].content).toBe('Shelf B – Lab');
     });
 
     it('draws a frame when asked to', () => {
-        const { svg } = renderLabel(template({ frame: true }), { title: 'Bod' }, deps);
+        const { svg } = renderLabel(template({ frame: true }), { title: 'Router' }, deps);
         expect(svg).toContain('<rect class="frame"');
     });
 });

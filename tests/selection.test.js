@@ -24,7 +24,7 @@ describe('buildPrintQueue', () => {
     const rows = [
         { name: 'A', qty: '2' },
         { name: 'B', qty: '0' },
-        { name: 'C', qty: 'tre' },
+        { name: 'C', qty: 'three' },
     ];
 
     it('prints each selected row the fixed number of times', () => {
