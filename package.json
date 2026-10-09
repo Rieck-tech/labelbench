@@ -79,6 +79,8 @@
           ]
         }
       ],
+      "identity": "-",
+      "hardenedRuntime": false,
       "extendInfo": {
         "NSBluetoothAlwaysUsageDescription": "Labelbench uses Bluetooth to connect to your label printer."
       }

@@ -31,7 +31,7 @@ Download the latest version for your system from the [Releases page](https://git
 The builds aren't code-signed yet, so the first launch needs one extra step:
 
 - **Windows**: if SmartScreen says it protected your PC, click **More info**, then **Run anyway**.
-- **macOS**: open the app once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. When asked, allow Labelbench to use Bluetooth.
+- **macOS**: open the app once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. When asked, allow Labelbench to use Bluetooth. If macOS says the app "is damaged and can't be opened", it means only that it was downloaded and isn't signed by a registered Apple developer; run `xattr -cr /Applications/Labelbench.app` in Terminal, then open it again.
 - **Linux**: make the AppImage executable (`chmod +x Labelbench-*.AppImage`). Bluetooth needs BlueZ, which most desktop distributions include.
 
 Bluetooth must be turned on in your computer's settings.
