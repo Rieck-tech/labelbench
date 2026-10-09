@@ -478,7 +478,7 @@ function renderPrinter() {
     el.innerHTML = `
         <span class="status-dot is-on" aria-hidden="true"></span>
         <span class="printer-name">${escapeHtml(p.name || p.model || 'Printer')}</span>
-        ${p.supplyName ? `<span class="muted">${escapeHtml(p.supplyName)}${p.supplyRemaining != null ? `, ${p.supplyRemaining}% left` : ''}</span>` : ''}
+        ${cartridgeInfo(p)}
         ${batteryIndicator(p)}
         <span class="printer-actions">
             <button type="button" class="quiet" data-action="feed">Feed</button>
@@ -487,6 +487,22 @@ function renderPrinter() {
             <button type="button" class="quiet" data-action="disconnect">Disconnect</button>
         </span>
         ${state.messageLog.current ? `<p class="printer-problem">${escapeHtml(state.messageLog.current)}</p>` : ''}`;
+}
+
+/** The loaded label cartridge: an icon of a label roll, the part number and how much is left. */
+function cartridgeInfo(p) {
+    if (!p.supplyName) return '';
+    const left = p.supplyRemaining != null ? `${p.supplyRemaining}% left` : '';
+    const label = `Label cartridge ${p.supplyName}${left ? `, ${left}` : ''}`;
+    return `<span class="cartridge" title="${escapeHtml(label)}">
+            <svg viewBox="0 0 22 14" aria-hidden="true">
+                <circle class="roll" cx="7" cy="7" r="6"/>
+                <circle class="core" cx="7" cy="7" r="2"/>
+                <path class="tape" d="M7 13 H20.5 V10.5 H11.5"/>
+            </svg>
+            <span class="visually-hidden">Label cartridge</span>
+            <span>${escapeHtml(p.supplyName)}${left ? ` <span aria-hidden="true">·</span> ${left}` : ''}</span>
+        </span>`;
 }
 
 /** The battery as four bars, like the lights on the printer, with a bolt while charging. */

@@ -986,3 +986,38 @@ kbd {
 .battery.is-low {
     color: var(--error);
 }
+
+.cartridge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    color: var(--ink-soft);
+}
+
+.cartridge svg {
+    height: 1.05em;
+    width: auto;
+    flex: none;
+}
+
+.cartridge .roll,
+.cartridge .core,
+.cartridge .tape {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+}
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
