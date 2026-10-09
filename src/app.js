@@ -47,6 +47,7 @@ const state = {
     showRaster: false,
     notice: null,
     printer: { connected: false },
+    connecting: false,
     printerApi: null,
     bluetooth: 'checking', // 'checking' | 'ok' | 'unsupported' | 'failed'
     job: null,
@@ -451,6 +452,13 @@ function renderPrinter() {
         el.innerHTML = '<p class="printer-problem">Brady’s printer library didn’t load. If you run Labelbench from source, run <code>npm install</code> and restart it.</p>';
         return;
     }
+    if (!p.connected && state.connecting) {
+        el.innerHTML = `
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="muted">Looking for printers. It can take up to a minute for yours to show up.</span>
+            <button type="button" class="dark" disabled>Connecting…</button>`;
+        return;
+    }
     if (!p.connected) {
         el.innerHTML = `
             <span class="status-dot" aria-hidden="true"></span>
@@ -587,13 +595,20 @@ async function setUpPrinter() {
 }
 
 async function connectPrinter() {
+    // While the browser's printer picker is open, the header says that finding the printer can take a while.
+    state.connecting = true;
+    renderPrinter();
+    let problem = null;
     try {
-        const problem = await state.printerApi.connect();
-        if (problem) await showDialog({ title: 'Couldn’t connect', body: `<p>${escapeHtml(problem)}</p><p>Check that the printer is on and close to this computer, then try again. If its Bluetooth light is solid blue, another device may be using it.</p>`, confirm: 'OK' });
+        problem = await state.printerApi.connect();
     } catch (error) {
         // Closing the Bluetooth picker without choosing also lands here; that needs no message.
         if (error?.name !== 'NotFoundError') console.error(error);
+    } finally {
+        state.connecting = false;
+        renderPrinter();
     }
+    if (problem) await showDialog({ title: 'Couldn’t connect', body: `<p>${escapeHtml(problem)}</p><p>Check that the printer is on and close to this computer, then try again. If its Bluetooth light is solid blue, another device may be using it.</p>`, confirm: 'OK' });
     return state.printer.connected;
 }
 

@@ -38,7 +38,7 @@ Bluetooth must be turned on in your computer's settings.
 
 ## Print your first labels
 
-1. Turn on the printer and click **Connect printer**, then pick it from the list.
+1. Turn on the printer and click **Connect printer**, then pick it from the list. It can take up to a minute for the printer to show up, so give it time before trying again.
 2. Drop your file onto the **Data** panel, or click **Choose file…**. The first row must hold the column names. To look around first, click **Try the sample data**.
 3. Click **Use cartridge size** to match the loaded labels, or type a size. Labelbench uses the cartridge's *printable area*: for self-laminating labels, that's only the white part. If the design and the cartridge don't match, Labelbench says so, because the printer would otherwise scale every label to fit.
 4. Build the label: type text, and press <kbd>{</kbd> to insert a value from a column.

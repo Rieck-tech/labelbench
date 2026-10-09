@@ -23,7 +23,50 @@ describe('toChoices', () => {
     });
 });
 
+describe('toChoices with the same printer under two addresses', () => {
+    // Brady names include the serial number, so one name means one printer. A printer that
+    // changes its Bluetooth address shows up again under a new id; the old entry is stale.
+    it('keeps only the entry seen most recently', () => {
+        const devices = [
+            { deviceId: 'new', deviceName: 'M511-PGM5112' },
+            { deviceId: 'old', deviceName: 'M511-PGM5112' },
+        ];
+        const firstSeen = new Map([['old', 1], ['new', 2]]);
+        expect(toChoices(devices, firstSeen)).toEqual([{ id: 'new', name: 'M511-PGM5112' }]);
+    });
+
+    it('falls back to list order when it has not tracked the entries', () => {
+        const devices = [
+            { deviceId: 'old', deviceName: 'M511-PGM5112' },
+            { deviceId: 'new', deviceName: 'M511-PGM5112' },
+        ];
+        expect(toChoices(devices)).toEqual([{ id: 'new', name: 'M511-PGM5112' }]);
+    });
+
+    it('never merges unnamed devices', () => {
+        const devices = [
+            { deviceId: 'a', deviceName: '' },
+            { deviceId: 'b', deviceName: '' },
+        ];
+        expect(toChoices(devices)).toHaveLength(2);
+    });
+});
+
 describe('createBluetoothChooser', () => {
+    it('offers the printer under its newest address when it shows up twice', () => {
+        const { view, chooser } = setup();
+        chooser.request([{ deviceId: 'old', deviceName: 'M511-PGM5112' }], vi.fn());
+        chooser.request(
+            [
+                { deviceId: 'new', deviceName: 'M511-PGM5112' },
+                { deviceId: 'old', deviceName: 'M511-PGM5112' },
+            ],
+            vi.fn(),
+        );
+        expect(view.update).toHaveBeenLastCalledWith([{ id: 'new', name: 'M511-PGM5112' }]);
+    });
+
+
     it('shows the picker on the first scan result and updates it on later ones', () => {
         const { view, chooser } = setup();
         chooser.request([], vi.fn());

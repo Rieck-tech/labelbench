@@ -9,25 +9,41 @@
 // This module holds that state and nothing else, so it can be tested without Electron.
 // `view` draws the picker: show(choices), update(choices), close().
 
-/** Turn Electron's device list into sorted, unique { id, name } choices. */
-export function toChoices(devices) {
-    const byId = new Map();
-    for (const device of devices) {
-        if (!byId.has(device.deviceId)) {
-            byId.set(device.deviceId, { id: device.deviceId, name: device.deviceName || 'Unnamed printer' });
-        }
-    }
-    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+/**
+ * Turn Electron's device list into sorted, unique { id, name } choices.
+ *
+ * Brady printer names include the serial number, so one name is one printer. A printer that
+ * changes its Bluetooth address appears again under a new id, and the old entry is stale.
+ * Of entries with the same name, keep the one seen most recently: `firstSeen` maps each id to
+ * when it first appeared (higher is newer); without it, later in the list counts as newer.
+ */
+export function toChoices(devices, firstSeen = new Map()) {
+    const byKey = new Map();
+    devices.forEach((device, index) => {
+        const id = device.deviceId;
+        const name = device.deviceName || '';
+        const key = name ? `name:${name}` : `id:${id}`;
+        const age = firstSeen.get(id) ?? index;
+        const current = byKey.get(key);
+        if (current && current.id === id) return;
+        if (!current || age > current.age) byKey.set(key, { id, name: name || 'Unnamed printer', age });
+    });
+    return [...byKey.values()]
+        .map(({ id, name }) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function createBluetoothChooser(view) {
     let pending = null;
     let choices = [];
+    // When each device id was first reported, to tell a printer's new address from its old one.
+    let firstSeen = new Map();
 
     function finish(id) {
         const callback = pending;
         pending = null;
         choices = [];
+        firstSeen = new Map();
         view.close();
         callback(id);
     }
@@ -39,7 +55,10 @@ export function createBluetoothChooser(view) {
         request(devices, callback) {
             const wasOpen = pending !== null;
             pending = callback;
-            choices = toChoices(devices);
+            for (const device of devices) {
+                if (!firstSeen.has(device.deviceId)) firstSeen.set(device.deviceId, firstSeen.size);
+            }
+            choices = toChoices(devices, firstSeen);
             if (wasOpen) view.update(choices);
             else view.show(choices);
         },
