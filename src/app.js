@@ -15,6 +15,7 @@ import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
 import { printerMessageText } from './lib/printer-message.js';
 import { connectionOutcome } from './lib/connection.js';
 import { emptyMessageLog, updateMessageLog, clearMessageLog } from './lib/message-log.js';
+import { batteryBars } from './lib/battery.js';
 import { renderDeps, rasterize, canvasToImage } from './render.js';
 
 const SETTINGS_KEY = 'labelbench:settings-v2';
@@ -473,15 +474,12 @@ function renderPrinter() {
         return;
     }
 
-    const battery = p.battery != null ? `Battery ${p.battery}%${p.charging ? ', charging' : ''}` : '';
-    // The printer only reports Low (shown as 11 %) and below; mark that, unless it's charging.
-    const batteryLow = p.battery != null && p.battery <= 11 && !p.charging;
     const messageCount = state.messageLog.entries.length;
     el.innerHTML = `
         <span class="status-dot is-on" aria-hidden="true"></span>
         <span class="printer-name">${escapeHtml(p.name || p.model || 'Printer')}</span>
         ${p.supplyName ? `<span class="muted">${escapeHtml(p.supplyName)}${p.supplyRemaining != null ? `, ${p.supplyRemaining}% left` : ''}</span>` : ''}
-        ${battery ? `<span class="${batteryLow ? 'battery-low' : 'muted'}">${battery}</span>` : ''}
+        ${batteryIndicator(p)}
         <span class="printer-actions">
             <button type="button" class="quiet" data-action="feed">Feed</button>
             <button type="button" class="quiet" data-action="cut">Cut</button>
@@ -489,6 +487,24 @@ function renderPrinter() {
             <button type="button" class="quiet" data-action="disconnect">Disconnect</button>
         </span>
         ${state.messageLog.current ? `<p class="printer-problem">${escapeHtml(state.messageLog.current)}</p>` : ''}`;
+}
+
+/** The battery as four bars, like the lights on the printer, with a bolt while charging. */
+function batteryIndicator(p) {
+    const level = batteryBars(p.battery);
+    if (!level) return '';
+    const label = `Battery: ${level.bars} of 4 bars${level.low ? ', low' : ''}${p.charging ? ', charging' : ''}`;
+    const segments = [0, 1, 2, 3]
+        .map((i) => `<rect class="${i < level.bars ? 'on' : 'off'}" x="${2.5 + i * 5}" y="2.5" width="4" height="7" rx="1"/>`)
+        .join('');
+    const bolt = p.charging ? '<path class="bolt" d="M30 1 L27 7 H30 L29 11 L33 5 H30 Z"/>' : '';
+    return `<span class="battery${level.low && !p.charging ? ' is-low' : ''}" role="img" aria-label="${label}" title="${label}">
+            <svg viewBox="0 0 ${p.charging ? 34 : 26} 12" aria-hidden="true">
+                <rect class="case" x="0.5" y="0.5" width="22" height="11" rx="2.5"/>
+                <rect class="nub" x="23.5" y="4" width="1.8" height="4" rx="0.9"/>
+                ${segments}${bolt}
+            </svg>
+        </span>`;
 }
 
 // --- Render: print bar ---------------------------------------------------------------

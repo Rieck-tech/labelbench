@@ -952,7 +952,37 @@ kbd {
     font-variant-numeric: tabular-nums;
 }
 
-.battery-low {
+.battery {
+    display: inline-flex;
+    color: var(--ink-soft);
+}
+
+.battery svg {
+    height: 0.95em;
+    width: auto;
+    overflow: visible;
+}
+
+.battery .case {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1;
+}
+
+.battery .nub,
+.battery .on {
+    fill: currentColor;
+}
+
+.battery .off {
+    fill: currentColor;
+    opacity: 0.15;
+}
+
+.battery .bolt {
+    fill: var(--ok);
+}
+
+.battery.is-low {
     color: var(--error);
-    font-weight: 600;
 }
