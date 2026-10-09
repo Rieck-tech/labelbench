@@ -598,10 +598,8 @@ async function setUpPrinter() {
     renderPrintBar();
 }
 
-async function connectPrinter() {
-    // While the printer picker is open, the header says that finding the printer can take a while.
-    state.connecting = true;
-    renderPrinter();
+/** One connection attempt: { result, problem }, where result is what connectionOutcome() says. */
+async function tryToConnect() {
     const started = performance.now();
     let problem = null;
     try {
@@ -609,21 +607,41 @@ async function connectPrinter() {
     } catch (error) {
         problem = `${error?.name ?? 'Error'}: ${error?.message ?? error}`;
         if (error?.name !== 'NotFoundError') console.error(error);
-    } finally {
-        state.connecting = false;
-        renderPrinter();
     }
-
-    const outcome = connectionOutcome({
+    const result = connectionOutcome({
         connected: state.printer.connected,
         problem,
         elapsedMs: performance.now() - started,
         desktop: IS_DESKTOP_APP,
     });
+    return { result, problem };
+}
+
+async function connectPrinter() {
+    // While the printer picker is open, the header says that finding the printer can take a while.
+    state.connecting = true;
+    renderPrinter();
+    let attempt;
+    try {
+        attempt = await tryToConnect();
+        // On macOS, the first search after starting the desktop app can come before the system
+        // reports that Bluetooth is on, and Electron then cancels it at once. Wait and try once more.
+        if (attempt.result === 'unavailable') {
+            await new Promise((resolve) => setTimeout(resolve, 700));
+            attempt = await tryToConnect();
+            // A search must follow soon after a click; if the browser refuses the retry, ask for another click.
+            if (/SecurityError/.test(attempt.problem ?? '')) attempt = { result: 'unavailable', problem: attempt.problem };
+        }
+    } finally {
+        state.connecting = false;
+        renderPrinter();
+    }
+    const { result: outcome, problem } = attempt;
+
     if (outcome === 'unavailable') {
         await showDialog({
             title: 'Bluetooth isn’t available',
-            body: `<p>Labelbench couldn’t start looking for printers. Check that Bluetooth is turned on.</p>
+            body: `<p>Labelbench couldn’t start looking for printers. Please try again. If this keeps happening, check that Bluetooth is turned on.</p>
                    <p>On a Mac, also open <strong>System Settings → Privacy &amp; Security → Bluetooth</strong> and allow Labelbench. If you started Labelbench from a terminal, allow the terminal app instead.</p>`,
             confirm: 'OK',
         });
