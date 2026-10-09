@@ -474,12 +474,14 @@ function renderPrinter() {
     }
 
     const battery = p.battery != null ? `Battery ${p.battery}%${p.charging ? ', charging' : ''}` : '';
+    // The printer only reports Low (shown as 11 %) and below; mark that, unless it's charging.
+    const batteryLow = p.battery != null && p.battery <= 11 && !p.charging;
     const messageCount = state.messageLog.entries.length;
     el.innerHTML = `
         <span class="status-dot is-on" aria-hidden="true"></span>
         <span class="printer-name">${escapeHtml(p.name || p.model || 'Printer')}</span>
         ${p.supplyName ? `<span class="muted">${escapeHtml(p.supplyName)}${p.supplyRemaining != null ? `, ${p.supplyRemaining}% left` : ''}</span>` : ''}
-        ${battery ? `<span class="muted">${battery}</span>` : ''}
+        ${battery ? `<span class="${batteryLow ? 'battery-low' : 'muted'}">${battery}</span>` : ''}
         <span class="printer-actions">
             <button type="button" class="quiet" data-action="feed">Feed</button>
             <button type="button" class="quiet" data-action="cut">Cut</button>

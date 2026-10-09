@@ -32,7 +32,6 @@ describe('printerMessage', () => {
 
     it('knows every key the SDK can send', () => {
         const all = [
-            keys('PrinterStatus_BatteryLow', { message: '_Description' }),
             keys('PrinterStatus_CutError'),
             keys('PrinterStatus_CutterJammed', { message: '_Description' }),
             keys('PrinterStatus_HeadOpenErrorIdentifier'),
@@ -57,6 +56,12 @@ describe('printerMessage', () => {
             expect(result.message, JSON.stringify(status)).toBeTruthy();
             expect(result.remedy, JSON.stringify(status)).toBeTruthy();
         }
+    });
+
+    it('leaves out the battery-low warning, since the header shows the battery level', () => {
+        // The SDK raises it for 9 %, which is also what it reports for any battery level it
+        // doesn't recognise, so it flashes up for a moment even on a full battery.
+        expect(printerMessage(keys('PrinterStatus_BatteryLow', { message: '_Description' }))).toBeNull();
     });
 
     it('passes on text the printer sends itself', () => {

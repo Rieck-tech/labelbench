@@ -5,11 +5,6 @@
 // The wording below is written from the key names; Brady doesn't document them.
 
 const MESSAGES = {
-    BatteryLow: {
-        title: 'Battery low',
-        message: 'The printer’s battery is running low.',
-        remedy: 'Charge the printer soon.',
-    },
     CutError: {
         title: 'Couldn’t cut',
         message: 'The printer couldn’t cut the label.',
@@ -93,7 +88,9 @@ function translate(value, field) {
     if (!match) return { text: value, initialized: false };
 
     const base = ALIASES[match[1]] ?? match[1];
-    if (base === 'Initialized') return { text: '', initialized: true };
+    // 'BatteryLow' is a warning, not a problem: the header shows the battery level anyway, and
+    // the SDK raises it for any battery level it doesn't recognise, so it flashes up needlessly.
+    if (base === 'Initialized' || base === 'BatteryLow') return { text: '', initialized: true };
     const known = MESSAGES[base];
     if (known) return { text: known[field], initialized: false };
     return { text: field === 'title' ? readable(base) : '', initialized: false };
