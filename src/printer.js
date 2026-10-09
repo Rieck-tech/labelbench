@@ -5,6 +5,7 @@
 // time. `await` simply waits for the answer before going on to the next line.
 
 import BradySdk from 'brady-web-sdk';
+import { bluetoothStatus } from './lib/bluetooth-status.js';
 
 const OWNERSHIP_KEY = 'labelbench:printer-id';
 
@@ -55,14 +56,18 @@ export function createPrinter(onChange) {
     return {
         snapshot,
 
-        /** Whether this browser can use Bluetooth at all (Chrome and Edge can, Safari can't). */
-        async isSupportedBrowser() {
-            if (!window.isSecureContext || !navigator.bluetooth) return false;
-            try {
-                return await sdk.isSupportedBrowser();
-            } catch {
-                return false;
+        /** 'ok', 'unsupported' (no Web Bluetooth in this browser) or 'off' (no Bluetooth on the computer). */
+        async bluetoothStatus() {
+            const hasApi = Boolean(navigator.bluetooth);
+            let available = false;
+            if (window.isSecureContext && hasApi) {
+                try {
+                    available = await sdk.isSupportedBrowser();
+                } catch {
+                    available = false;
+                }
             }
+            return bluetoothStatus({ secure: window.isSecureContext, hasApi, available });
         },
 
         /** Show the browser's Bluetooth picker and connect to the chosen printer. */

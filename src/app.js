@@ -1,4 +1,4 @@
-// Labelbench: load a CSV or Excel file, design a label, print a batch on a Brady M511.
+// Labelbench: load a CSV or Excel file, design a label, print a batch on a Brady label printer.
 //
 // The app keeps everything in one `state` object. When something changes, the
 // matching render function redraws that part of the page from `state`.
@@ -440,11 +440,15 @@ function renderPrinter() {
     const el = $('#printer');
 
     if (state.bluetooth === 'unsupported') {
-        el.innerHTML = `<p class="printer-problem">This browser can’t use Bluetooth. To print, open <strong>${escapeHtml(location.origin)}</strong> in Chrome or Edge.</p>`;
+        el.innerHTML = `<p class="printer-problem">This browser can’t use Bluetooth. To print, use the Labelbench app, or open <strong>${escapeHtml(location.origin)}</strong> in Chrome or Edge.</p>`;
+        return;
+    }
+    if (state.bluetooth === 'off') {
+        el.innerHTML = '<p class="printer-problem">Bluetooth is turned off, or this computer has none. Turn Bluetooth on, then restart Labelbench.</p>';
         return;
     }
     if (state.bluetooth === 'failed') {
-        el.innerHTML = '<p class="printer-problem">Brady’s printer library didn’t load. Run <code>npm install</code> and restart Labelbench.</p>';
+        el.innerHTML = '<p class="printer-problem">Brady’s printer library didn’t load. If you run Labelbench from source, run <code>npm install</code> and restart it.</p>';
         return;
     }
     if (!p.connected) {
@@ -573,7 +577,7 @@ async function setUpPrinter() {
                 renderPrintBar();
             }
         });
-        state.bluetooth = (await state.printerApi.isSupportedBrowser()) ? 'ok' : 'unsupported';
+        state.bluetooth = await state.printerApi.bluetoothStatus();
     } catch (error) {
         console.error(error);
         state.bluetooth = 'failed';

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+    <title>Connect a printer</title>
+    <style>
+        :root {
+            --bench: #eef1f0;
+            --panel: #ffffff;
+            --ink: #1d2422;
+            --ink-soft: #56625e;
+            --line: #d3dbd8;
+            --signal: #f2c200;
+            --signal-wash: #fff6cc;
+            --focus: #1f6fd1;
+            color-scheme: light dark;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bench: #151918;
+                --panel: #1e2422;
+                --ink: #e6ecea;
+                --ink-soft: #9aa7a3;
+                --line: #333c39;
+                --signal-wash: #3a3214;
+                --focus: #7fb2f0;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 20px;
+            background: var(--bench);
+            color: var(--ink);
+            font: 14px/1.4 "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+        }
+        h1 { margin: 0; font-size: 17px; }
+        .status { margin: 0; color: var(--ink-soft); }
+        .status::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin-right: 8px;
+            border-radius: 50%;
+            background: var(--signal);
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        @keyframes pulse { 50% { opacity: 0.25; } }
+        @media (prefers-reduced-motion: reduce) { .status::before { animation: none; } }
+        ul {
+            flex: 1;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            overflow-y: auto;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+        }
+        li + li { border-top: 1px solid var(--line); }
+        ul button {
+            width: 100%;
+            padding: 12px 14px;
+            border: 0;
+            background: none;
+            color: inherit;
+            font: inherit;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+        }
+        ul button:hover { background: var(--signal-wash); }
+        button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+        .empty { padding: 14px; color: var(--ink-soft); }
+        .actions { display: flex; justify-content: flex-end; }
+        .cancel {
+            padding: 7px 16px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            background: var(--panel);
+            color: inherit;
+            font: inherit;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Connect a printer</h1>
+    <p class="status" id="status" aria-live="polite">Looking for printers…</p>
+    <ul id="list" aria-label="Printers found">
+        <li class="empty">Turn the printer on and keep it close to this computer.</li>
+    </ul>
+    <div class="actions">
+        <button type="button" class="cancel" id="cancel">Cancel</button>
+    </div>
+
+    <script>
+        const list = document.getElementById('list');
+        const status = document.getElementById('status');
+
+        window.picker.onChoices((choices) => {
+            status.textContent = choices.length === 0
+                ? 'Looking for printers…'
+                : `Found ${choices.length} ${choices.length === 1 ? 'printer' : 'printers'}. Still looking…`;
+
+            if (choices.length === 0) return;
+
+            const focusedId = document.activeElement?.dataset?.id;
+            list.replaceChildren(...choices.map(({ id, name }) => {
+                const item = document.createElement('li');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = name;
+                button.dataset.id = id;
+                button.addEventListener('click', () => window.picker.choose(id));
+                item.append(button);
+                return item;
+            }));
+            list.querySelector(`[data-id="${CSS.escape(focusedId ?? '')}"]`)?.focus();
+        });
+
+        document.getElementById('cancel').addEventListener('click', () => window.picker.cancel());
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') window.picker.cancel();
+        });
+    </script>
+</body>
+</html>
