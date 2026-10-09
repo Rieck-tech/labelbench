@@ -45,7 +45,8 @@ export function createPrinter(onChange) {
             zoneDimensions: connected ? sdk.zoneDimensions : null,
             dieCut: connected ? sdk.mediaIsDieCut : null,
             dpi: (connected && sdk.dotsPerInch) || 300,
-            battery: connected ? sdk.batteryLevelPercentage : null,
+            // The SDK says 0 % until the printer first reports its battery, so 0 means "not known yet".
+            battery: connected && sdk.batteryLevelPercentage > 0 ? sdk.batteryLevelPercentage : null,
             charging: connected ? sdk.isAcConnected : null,
             messageTitle: connected ? sdk.messageTitle : null,
             message: connected ? sdk.message : null,
