@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseRowRange, buildPrintQueue, chunk } from '../src/lib/selection.js';
+import { parseRowRange, buildPrintQueue, buildManualQueue, chunk } from '../src/lib/selection.js';
 
 describe('parseRowRange', () => {
     it('turns "1-3, 5" into zero-based indexes', () => {
@@ -52,5 +52,23 @@ describe('buildPrintQueue', () => {
 describe('chunk', () => {
     it('splits a list into batches', () => {
         expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+    });
+});
+
+describe('buildManualQueue', () => {
+    it('prints the design on its own the chosen number of times, with no data', () => {
+        const queue = buildManualQueue({ copies: 3 });
+        expect(queue).toHaveLength(3);
+        expect(queue.every((item) => item.rowIndex === 0 && Object.keys(item.row).length === 0)).toBe(true);
+    });
+
+    it('prints one label when copies is missing or not a positive number', () => {
+        expect(buildManualQueue({})).toHaveLength(1);
+        expect(buildManualQueue({ copies: 0 })).toHaveLength(1);
+        expect(buildManualQueue({ copies: 'x' })).toHaveLength(1);
+    });
+
+    it('ignores a copies column, since there is no file to read it from', () => {
+        expect(buildManualQueue({ copies: 2, copiesColumn: 'qty' })).toHaveLength(2);
     });
 });

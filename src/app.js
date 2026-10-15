@@ -7,9 +7,9 @@ import { parseCsv } from './lib/csv.js';
 import { decodeText } from './lib/decode.js';
 import { sheetToTable } from './lib/cells.js';
 import { readXlsx } from './lib/xlsx.js';
-import { renderLabel, defaultTemplate, CODE_TYPES } from './lib/layout.js';
-import { buildPrintQueue, parseRowRange } from './lib/selection.js';
-import { columnsIn, normalizeParts } from './lib/parts.js';
+import { renderLabel, defaultTemplate, designColumns, CODE_TYPES } from './lib/layout.js';
+import { buildManualQueue, buildPrintQueue, parseRowRange } from './lib/selection.js';
+import { normalizeParts } from './lib/parts.js';
 import { partsEditorHtml, setUpPartsEditors, insertIntoLastEditor } from './part-editor.js';
 import { labelSizeFromPrinter, sameSize } from './lib/printer-size.js';
 import { printerMessageText } from './lib/printer-message.js';
@@ -109,7 +109,7 @@ function normalizeTemplate(raw) {
 }
 
 /** Every column the design uses, in the code and in the text lines. */
-const usedColumns = () => columnsIn([...state.template.code.parts, ...state.template.lines.flatMap((line) => line.parts)]);
+const usedColumns = () => designColumns(state.template);
 
 // --- Data ------------------------------------------------------------------------
 
@@ -213,7 +213,7 @@ function renderData() {
         body.innerHTML = `
             <div class="dropzone" data-dropzone>
                 <p class="drop-title">Drop a CSV or Excel file here</p>
-                <p class="drop-hint">CSV, TSV or .xlsx. The first row should hold the column names.</p>
+                <p class="drop-hint">CSV, TSV or .xlsx. The first row should hold the column names. To print a single label, just type its text in the design.</p>
                 <div class="drop-actions">
                     <button type="button" class="secondary" data-action="choose-file">Choose file…</button>
                     <button type="button" class="quiet" data-action="load-sample">Try the sample data</button>
@@ -294,7 +294,7 @@ async function renderPreview() {
                 ? `<button type="button" class="icon" data-action="prev-row" aria-label="Previous row" ${state.previewIndex <= 0 ? 'disabled' : ''}>‹</button>
                    <span class="row-pos">Row ${state.previewIndex + 1} of ${state.rows.length}</span>
                    <button type="button" class="icon" data-action="next-row" aria-label="Next row" ${state.previewIndex >= state.rows.length - 1 ? 'disabled' : ''}>›</button>`
-                : '<span class="muted">Column names shown until a file is loaded</span>'
+                : `<span class="muted">${usedColumns().length ? 'Column names shown until a file is loaded' : 'No file needed: this text prints as shown'}</span>`
         }
         <label class="check"><input type="checkbox" data-action="toggle-raster" ${state.showRaster ? 'checked' : ''}> Show as printed</label>`;
 
@@ -526,8 +526,16 @@ function batteryIndicator(p) {
 // --- Render: print bar ---------------------------------------------------------------
 
 function currentQueue() {
+    if (!state.rows.length) return buildManualQueue(state.options);
     const selected = [...state.selected].sort((a, b) => a - b);
     return buildPrintQueue(state.rows, selected, state.options);
+}
+
+/** "3 labels from 2 rows", or, with no file loaded, "3 labels of the text in the design". */
+function summaryHtml(queue) {
+    const rowCount = new Set(queue.map((item) => item.rowIndex)).size;
+    const source = state.rows.length ? `from ${plural(rowCount, 'row', 'rows')}` : 'of the text in the design';
+    return `<p><strong>${plural(queue.length, 'label', 'labels')}</strong> <span class="muted">${source}</span></p>`;
 }
 
 function renderPrintBar() {
@@ -554,16 +562,15 @@ function renderPrintBar() {
     }
 
     const queue = currentQueue();
-    const rowCount = new Set(queue.map((item) => item.rowIndex)).size;
     const finished = job?.finished ? `<p class="done">Printed ${plural(job.queue.length, 'label', 'labels')}.</p>` : '';
 
     bar.innerHTML = `
         <div class="summary">
             ${finished}
-            <p><strong>${plural(queue.length, 'label', 'labels')}</strong> <span class="muted">from ${plural(rowCount, 'row', 'rows')}</span></p>
+            ${summaryHtml(queue)}
         </div>
         <label class="field"><span>Copies</span>
-            <input type="number" data-option="copies" value="${o.copies}" min="1" max="99" step="1" ${o.copiesColumn ? 'disabled' : ''}>
+            <input type="number" data-option="copies" value="${o.copies}" min="1" max="99" step="1" ${o.copiesColumn && state.rows.length ? 'disabled' : ''}>
         </label>
         <label class="field"><span>Copies from column</span>
             <select data-option="copiesColumn" ${state.headers.length ? '' : 'disabled'}>
@@ -578,7 +585,7 @@ function renderPrintBar() {
             </select>
         </label>
         <div class="print-buttons">
-            <button type="button" class="secondary" data-action="print-test" ${state.rows.length && state.bluetooth === 'ok' ? '' : 'disabled'}>Print this label</button>
+            <button type="button" class="secondary" data-action="print-test" ${state.bluetooth === 'ok' ? '' : 'disabled'}>Print this label</button>
             <button type="button" class="primary" data-action="print" ${queue.length && state.bluetooth === 'ok' ? '' : 'disabled'}>Print ${plural(queue.length, 'label', 'labels')}</button>
         </div>`;
 }
@@ -746,9 +753,15 @@ async function startPrint(queue) {
 
     // Check every label before printing, so problems show up before the tape is used.
     const problems = [];
-    for (const rowIndex of new Set(queue.map((item) => item.rowIndex))) {
-        const { warnings } = renderLabel(state.template, state.rows[rowIndex] ?? previewRow(), renderDeps);
+    const rowsToCheck = new Map(queue.map((item) => [item.rowIndex, item.row]));
+    for (const [rowIndex, row] of rowsToCheck) {
+        const { warnings } = renderLabel(state.template, row, renderDeps);
         if (warnings.length) problems.push({ rowIndex, warnings });
+    }
+    const emptyColumns = state.rows.length ? [] : usedColumns();
+    if (emptyColumns.length) {
+        const names = emptyColumns.map((name) => `“${name}”`).join(', ');
+        problems.unshift({ text: `No file is loaded, so ${emptyColumns.length === 1 ? 'the column' : 'the columns'} ${names} will be left empty. Type the text into the design instead, or open a file.` });
     }
     const { size: printerSize, mismatch } = cartridgeSize();
     if (mismatch) {
@@ -757,7 +770,7 @@ async function startPrint(queue) {
     if (problems.length) {
         const list = problems
             .slice(0, 8)
-            .map((p) => (p.text ? `<li>${escapeHtml(p.text)}</li>` : `<li><strong>Row ${p.rowIndex + 1}:</strong> ${p.warnings.map(escapeHtml).join(' ')}</li>`))
+            .map((p) => (p.text ? `<li>${escapeHtml(p.text)}</li>` : `<li><strong>${state.rows.length ? `Row ${p.rowIndex + 1}` : 'The label'}:</strong> ${p.warnings.map(escapeHtml).join(' ')}</li>`))
             .join('');
         const more = problems.length > 8 ? `<p class="muted">…and ${problems.length - 8} more.</p>` : '';
         const go = await showDialog({
@@ -869,7 +882,7 @@ const actions = {
     'printer-messages': showPrinterMessages,
     feed: () => state.printerApi.feed(),
     cut: () => state.printerApi.cut(),
-    'print-test': () => startPrint([{ rowIndex: state.previewIndex, row: previewRow() }]),
+    'print-test': () => startPrint(state.rows.length ? [{ rowIndex: state.previewIndex, row: previewRow() }] : buildManualQueue({ copies: 1 })),
     print: () => startPrint(currentQueue()),
     stop: () => {
         state.job.stopRequested = true;
@@ -994,9 +1007,8 @@ document.addEventListener('input', (event) => {
 /** Update only the label count while typing in the copies field, so the field keeps focus. */
 function renderPrintBarSummary() {
     const queue = currentQueue();
-    const rowCount = new Set(queue.map((item) => item.rowIndex)).size;
     const summary = $('#printbar .summary');
-    if (summary) summary.innerHTML = `<p><strong>${plural(queue.length, 'label', 'labels')}</strong> <span class="muted">from ${plural(rowCount, 'row', 'rows')}</span></p>`;
+    if (summary) summary.innerHTML = summaryHtml(queue);
     const button = $('[data-action="print"]');
     if (button) {
         button.textContent = `Print ${plural(queue.length, 'label', 'labels')}`;

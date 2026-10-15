@@ -1,4 +1,4 @@
-import { fillParts } from './parts.js';
+import { columnsIn, fillParts } from './parts.js';
 
 /**
  * Label layout. Everything here is measured in millimetres, and the result is an SVG
@@ -30,6 +30,12 @@ export function defaultTemplate() {
             { parts: [{ column: 'subtitle' }], sizeMm: 4.5, bold: false, align: 'left', wrap: true, upper: false },
         ],
     };
+}
+
+/** Every column the design uses: the code's (when it has a code), then the text lines'. Each listed once. */
+export function designColumns(template) {
+    const hasCode = template.code?.type && template.code.type !== 'none';
+    return columnsIn([...(hasCode ? template.code.parts : []), ...(template.lines ?? []).flatMap((line) => line.parts)]);
 }
 
 /** Format a number for SVG: at most three decimals, no trailing zeros. */

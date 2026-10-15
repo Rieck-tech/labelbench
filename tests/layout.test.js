@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderLabel, defaultTemplate } from '../src/lib/layout.js';
+import { renderLabel, defaultTemplate, designColumns } from '../src/lib/layout.js';
 
 // A predictable stand-in for the browser's text measuring:
 // every character is half as wide as the font size.
@@ -214,5 +214,23 @@ describe('renderLabel', () => {
     it('draws a frame when asked to', () => {
         const { svg } = renderLabel(template({ frame: true }), { title: 'Router' }, deps);
         expect(svg).toContain('<rect class="frame"');
+    });
+});
+
+describe('designColumns', () => {
+    const lines = [{ parts: [{ text: 'Shelf ' }, { column: 'shelf' }] }, { parts: [{ column: 'name' }, { column: 'shelf' }] }];
+
+    it('lists the columns the text lines and the code use, each once', () => {
+        const template = { lines, code: { type: 'qrcode', parts: [{ column: 'id' }] } };
+        expect(designColumns(template)).toEqual(['id', 'shelf', 'name']);
+    });
+
+    it('leaves out the code’s columns when the design has no code', () => {
+        const template = { lines, code: { type: 'none', parts: [{ column: 'id' }] } };
+        expect(designColumns(template)).toEqual(['shelf', 'name']);
+    });
+
+    it('is empty for a design with only typed text', () => {
+        expect(designColumns({ lines: [{ parts: [{ text: 'Rack A' }] }], code: { type: 'none', parts: [] } })).toEqual([]);
     });
 });

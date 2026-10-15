@@ -52,6 +52,15 @@ export function buildPrintQueue(rows, selectedIndexes, options = {}) {
     return queue;
 }
 
+/**
+ * The labels to print when no file is loaded: the design's own text, `copies` times.
+ * Column parts have no row to read from, so they print empty.
+ */
+export function buildManualQueue({ copies } = {}) {
+    const count = Number.isFinite(Number(copies)) && Number(copies) >= 1 ? Math.floor(Number(copies)) : 1;
+    return Array.from({ length: count }, () => ({ rowIndex: 0, row: {} }));
+}
+
 /** Split a list into batches of at most `size` items. */
 export function chunk(list, size) {
     const batches = [];

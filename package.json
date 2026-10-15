@@ -1,7 +1,7 @@
 {
   "name": "labelbench",
   "productName": "Labelbench",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Batch-print labels from CSV or Excel files to Brady Bluetooth label printers",
   "homepage": "https://github.com/Rieck-tech/labelbench",
   "repository": {
