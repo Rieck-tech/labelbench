@@ -11,6 +11,7 @@ Labelbench runs entirely on your own computer, on Windows, macOS and Linux, and 
 - See the exact label for any row before printing, including the black-and-white bitmap the printer will receive.
 - Print in batches, with copies per row (fixed or taken from a column) and cutting options. If the printer runs out of tape, fix it and continue from where it stopped.
 - Every label is checked before printing, so text that doesn't fit is caught before any tape is used.
+- No file needed for a one-off: type the text into the design and print it, with as many copies as you like.
 
 ## Printers
 
@@ -58,6 +59,8 @@ Bluetooth must be turned on in your computer's settings.
 4. Build the label: type text, and press <kbd>{</kbd> to insert a value from a column.
 5. Click **Print this label** to print one test label. If it comes out sideways or upside down, change **Turn when printing**. If thin text is faint, increase **Darkness**.
 6. Select the rows and click **Print _n_ labels**.
+
+To print a single label without a file, skip step 2: type the text straight into the design, set **Copies**, and print.
 
 **Save design…** stores a label design as a file, and **Open design…** loads it again. The current design is also remembered between sessions.
 
