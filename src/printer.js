@@ -9,6 +9,10 @@ import { bluetoothStatus } from './lib/bluetooth-status.js';
 
 const OWNERSHIP_KEY = 'labelbench:printer-id';
 
+// The SDK's cut options, as used by the app's "Cut" setting.
+const CUT_END_OF_JOB = 0;
+const CUT_NEVER = 2;
+
 function loadId() {
     try {
         return localStorage.getItem(OWNERSHIP_KEY);
@@ -89,14 +93,21 @@ export function createPrinter(onChange) {
         cut: () => sdk.cut(),
 
         /**
-         * Print a list of <img> elements as one print job.
-         * Returns true when the printer accepted the job.
+         * Print a list of <img> elements, sending each one to the printer as its own job.
+         * The SDK tells the printer how many labels a job holds as a single digit, so a job
+         * of 10 or more labels confuses the printer, which then skips most of them.
+         * "Cut after each batch" becomes "don't cut" for every label but the last.
+         * Returns true when the printer accepted every label.
          */
         async printImages(images, { cutOption }) {
             sdk.setCopies(1);
             sdk.setCollate(false);
-            sdk.setCutOption(cutOption);
-            return await sdk.printBitmaps(images);
+            for (const [i, image] of images.entries()) {
+                const last = i === images.length - 1;
+                sdk.setCutOption(cutOption === CUT_END_OF_JOB && !last ? CUT_NEVER : cutOption);
+                if (!(await sdk.printBitmaps([image]))) return false;
+            }
+            return true;
         },
     };
 }
